@@ -8,6 +8,7 @@ import ChapterDisplay from '@/components/ChapterDisplay';
 import { useAuth } from '@/hooks/useAuth';
 import { createClient } from '@/lib/supabase/client';
 import { Handboek, Hoofdstuk, Lengte, AfbeeldingType, ChapterImage, getTemplate, WOORDEN_PER_LENGTE, HoofdstukPlan } from '@/types';
+import { getApiKeyHeader } from '@/hooks/useApiKey';
 
 const LENGTES: { value: Lengte; label: string; description: string; woorden: number }[] = [
   { value: 'kort', label: 'Kort', description: '~800 woorden', woorden: 800 },
@@ -141,7 +142,10 @@ export default function NieuwHoofdstukPage() {
     try {
       const response = await fetch('/api/images', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...getApiKeyHeader(),
+        },
         body: JSON.stringify({ searchTerms }),
       });
 
@@ -168,7 +172,10 @@ export default function NieuwHoofdstukPage() {
       try {
         const response = await fetch('/api/generate-image', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            ...getApiKeyHeader(),
+          },
           body: JSON.stringify({ prompt: term, onderwerp }),
         });
 
@@ -193,7 +200,10 @@ export default function NieuwHoofdstukPage() {
       try {
         const response = await fetch('/api/generate-image', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            ...getApiKeyHeader(),
+          },
           body: JSON.stringify({
             prompt: 'Infographic samenvatting',
             onderwerp,
@@ -264,7 +274,10 @@ export default function NieuwHoofdstukPage() {
 
       const response = await fetch('/api/generate', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...getApiKeyHeader(),
+        },
         body: JSON.stringify({
           ...formData,
           eerdereHoofdstukken: eerdereHoofdstukkenContext,
@@ -272,7 +285,8 @@ export default function NieuwHoofdstukPage() {
       });
 
       if (!response.ok) {
-        throw new Error('Generatie mislukt');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Generatie mislukt');
       }
 
       const reader = response.body?.getReader();

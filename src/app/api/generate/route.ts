@@ -2,8 +2,12 @@ import { NextRequest } from 'next/server';
 import { buildPrompt, buildPromptWithContext } from '@/lib/prompts';
 import { FormData, TemplateSection } from '@/types';
 
-const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
-const MODEL = 'google/gemini-3-pro-preview';
+const MODEL = 'google/gemini-2.5-flash-preview-05-20';
+
+// Get API key from request header (user's key) - no fallback to env
+function getApiKey(request: NextRequest): string | null {
+  return request.headers.get('X-OpenRouter-Key');
+}
 
 interface EerderHoofdstuk {
   titel: string;
@@ -30,6 +34,15 @@ interface RequestBody {
 
 export async function POST(request: NextRequest) {
   try {
+    // Get API key from header
+    const apiKey = getApiKey(request);
+    if (!apiKey) {
+      return new Response(JSON.stringify({ error: 'API key is vereist. Stel je OpenRouter API key in via de instellingen.' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
     const body: RequestBody = await request.json();
 
     // Support both new format (with formData wrapper) and legacy format
@@ -66,7 +79,7 @@ export async function POST(request: NextRequest) {
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+        'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
         'HTTP-Referer': 'https://handboek-generator.app',
         'X-Title': 'Handboek Generator',

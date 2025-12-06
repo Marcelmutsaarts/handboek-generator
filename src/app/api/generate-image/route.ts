@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 const IMAGE_MODEL = 'google/gemini-2.5-flash-image-preview';
 const INFOGRAPHIC_MODEL = 'google/gemini-3-pro-image-preview';
+
+// Get API key from request header (user's key) - no fallback to env
+function getApiKey(request: NextRequest): string | null {
+  return request.headers.get('X-OpenRouter-Key');
+}
 
 interface ImageResponse {
   type: string;
@@ -20,16 +24,17 @@ export async function POST(request: NextRequest) {
       chapterContent?: string;
     } = await request.json();
 
+    // Get API key from header
+    const apiKey = getApiKey(request);
+    if (!apiKey) {
+      return NextResponse.json({ error: 'API key is vereist. Stel je OpenRouter API key in via de instellingen.' }, { status: 401 });
+    }
+
     console.log('=== Image Generation Request ===');
     console.log('isInfographic:', isInfographic);
     console.log('hasChapterContent:', !!chapterContent);
     console.log('chapterContentLength:', chapterContent?.length || 0);
     console.log('onderwerp:', onderwerp);
-
-    if (!OPENROUTER_API_KEY) {
-      console.error('OpenRouter API key not configured');
-      return NextResponse.json({ error: 'API key not configured' }, { status: 500 });
-    }
 
     if (!prompt) {
       return NextResponse.json({ error: 'Prompt is required' }, { status: 400 });
@@ -106,7 +111,7 @@ Stijlvereisten:
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+        'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
         'HTTP-Referer': 'https://handboek-generator.app',
         'X-Title': 'Handboek Generator',

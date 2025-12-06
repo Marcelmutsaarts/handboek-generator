@@ -6,6 +6,7 @@ import InputForm from '@/components/InputForm';
 import ChapterDisplay from '@/components/ChapterDisplay';
 import Header from '@/components/Header';
 import { FormData, ChapterImage, AfbeeldingType } from '@/types';
+import { getApiKeyHeader } from '@/hooks/useApiKey';
 
 type AppState = 'input' | 'generating' | 'result';
 
@@ -33,12 +34,16 @@ export default function Home() {
     try {
       const response = await fetch('/api/generate', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...getApiKeyHeader(),
+        },
         body: JSON.stringify(formData),
       });
 
       if (!response.ok) {
-        throw new Error('Generatie mislukt');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Generatie mislukt');
       }
 
       const reader = response.body?.getReader();
@@ -106,7 +111,10 @@ export default function Home() {
     try {
       const response = await fetch('/api/images', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...getApiKeyHeader(),
+        },
         body: JSON.stringify({ searchTerms }),
       });
 
@@ -133,7 +141,10 @@ export default function Home() {
       try {
         const response = await fetch('/api/generate-image', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            ...getApiKeyHeader(),
+          },
           body: JSON.stringify({ prompt: term, onderwerp }),
         });
 
@@ -161,7 +172,10 @@ export default function Home() {
       try {
         const response = await fetch('/api/generate-image', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            ...getApiKeyHeader(),
+          },
           body: JSON.stringify({
             prompt: 'Infographic samenvatting',
             onderwerp,

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Header from '@/components/Header';
 import { useAuth } from '@/hooks/useAuth';
+import { getApiKeyHeader } from '@/hooks/useApiKey';
 import { createClient } from '@/lib/supabase/client';
 import { Niveau, TemplateType, TemplateSection, LEERJAREN_PER_NIVEAU, HoofdstukPlan, HandboekStructuur } from '@/types';
 import TemplateSelector from '@/components/TemplateSelector';
@@ -64,7 +65,10 @@ export default function NieuwHandboekPage() {
     try {
       const response = await fetch('/api/generate-structure', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...getApiKeyHeader(),
+        },
         body: JSON.stringify({
           titel: formData.titel,
           beschrijving: formData.beschrijving || formData.titel,
@@ -74,7 +78,8 @@ export default function NieuwHandboekPage() {
       });
 
       if (!response.ok) {
-        throw new Error('Structuur genereren mislukt');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Structuur genereren mislukt');
       }
 
       const data = await response.json();

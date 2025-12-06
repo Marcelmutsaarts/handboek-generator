@@ -1,7 +1,11 @@
 import { NextRequest } from 'next/server';
 
-const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
-const MODEL = 'google/gemini-3-pro-preview';
+const MODEL = 'google/gemini-2.5-flash-preview-05-20';
+
+// Get API key from request header (user's key) - no fallback to env
+function getApiKey(request: NextRequest): string | null {
+  return request.headers.get('X-OpenRouter-Key');
+}
 
 interface RewriteRequest {
   sectie: string;        // De originele tekst van de sectie
@@ -11,6 +15,15 @@ interface RewriteRequest {
 
 export async function POST(request: NextRequest) {
   try {
+    // Get API key from header
+    const apiKey = getApiKey(request);
+    if (!apiKey) {
+      return new Response(
+        JSON.stringify({ error: 'API key is vereist. Stel je OpenRouter API key in via de instellingen.' }),
+        { status: 401, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
     const body: RewriteRequest = await request.json();
 
     if (!body.sectie?.trim() || !body.instructie?.trim()) {
@@ -39,7 +52,7 @@ Geef alleen de herschreven tekst terug, zonder uitleg of commentaar.`;
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+        'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
         'HTTP-Referer': 'https://handboek-generator.app',
         'X-Title': 'Handboek Generator',

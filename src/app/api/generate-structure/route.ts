@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Niveau, HoofdstukPlan } from '@/types';
 
-const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
-const MODEL = 'google/gemini-2.0-flash-001';
+const MODEL = 'google/gemini-2.5-flash-preview-05-20';
+
+// Get API key from request header (user's key) - no fallback to env
+function getApiKey(request: NextRequest): string | null {
+  return request.headers.get('X-OpenRouter-Key');
+}
 
 interface GenerateStructureRequest {
   titel: string;
@@ -23,6 +27,15 @@ const NIVEAU_CONTEXT: Record<Niveau, string> = {
 
 export async function POST(request: NextRequest) {
   try {
+    // Get API key from header
+    const apiKey = getApiKey(request);
+    if (!apiKey) {
+      return NextResponse.json(
+        { error: 'API key is vereist. Stel je OpenRouter API key in via de instellingen.' },
+        { status: 401 }
+      );
+    }
+
     const body: GenerateStructureRequest = await request.json();
     const { titel, beschrijving, niveau, leerjaar, aantalHoofdstukken } = body;
 
@@ -73,7 +86,7 @@ Zorg dat de JSON geldig is en direct te parsen.`;
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+        'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
         'HTTP-Referer': 'https://handboek-generator.app',
         'X-Title': 'Handboek Generator',

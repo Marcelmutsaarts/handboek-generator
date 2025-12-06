@@ -130,11 +130,22 @@ npm run build   # Production build
 npx tsc --noEmit # Type checking
 ```
 
-## API Keys Nodig (Environment Variables)
-- `OPENROUTER_API_KEY` - Voor tekstgeneratie én AI afbeeldingen
+## API Keys
+
+### Gebruiker API Key (vereist)
+Gebruikers moeten hun eigen OpenRouter API key invoeren via de instellingen knop in de header. De key wordt:
+- Opgeslagen in localStorage (lokaal in de browser)
+- Meegestuurd in de `X-OpenRouter-Key` header naar de API routes
+- Nooit opgeslagen op de server
+
+### Environment Variables (alleen Supabase en Pexels)
 - `PEXELS_API_KEY` - Voor stockfoto's
 - `NEXT_PUBLIC_SUPABASE_URL` - Supabase project URL
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY` - Supabase anonymous key
+
+### Gerelateerde bestanden
+- `src/hooks/useApiKey.ts` - Hook voor API key management
+- `src/components/ApiKeySettings.tsx` - Modal voor key invoer
 
 ## Deployment
 - **GitHub**: https://github.com/Marcelmutsaarts/handboek-generator

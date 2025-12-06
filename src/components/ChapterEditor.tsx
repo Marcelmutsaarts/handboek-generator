@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { getApiKeyHeader } from '@/hooks/useApiKey';
 
 interface ChapterEditorProps {
   content: string;
@@ -57,14 +58,20 @@ export default function ChapterEditor({
     try {
       const response = await fetch('/api/rewrite', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...getApiKeyHeader(),
+        },
         body: JSON.stringify({
           sectie: textToRewrite,
           instructie,
         }),
       });
 
-      if (!response.ok) throw new Error('Rewrite failed');
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Rewrite failed');
+      }
 
       const reader = response.body?.getReader();
       if (!reader) throw new Error('No response body');
