@@ -1,65 +1,292 @@
-import Image from "next/image";
+'use client';
+
+import { useState } from 'react';
+import InputForm from '@/components/InputForm';
+import ChapterDisplay from '@/components/ChapterDisplay';
+import Header from '@/components/Header';
+import { FormData, ChapterImage, AfbeeldingType } from '@/types';
+
+type AppState = 'input' | 'generating' | 'result';
 
 export default function Home() {
+  const [appState, setAppState] = useState<AppState>('input');
+  const [content, setContent] = useState('');
+  const [prompt, setPrompt] = useState('');
+  const [images, setImages] = useState<ChapterImage[]>([]);
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [imageType, setImageType] = useState<AfbeeldingType>('geen');
+  const [isLoadingImages, setIsLoadingImages] = useState(false);
+  const [onderwerp, setOnderwerp] = useState('');
+
+  const handleSubmit = async (formData: FormData) => {
+    setAppState('generating');
+    setContent('');
+    setPrompt('');
+    setImages([]);
+    setError(null);
+    setIsStreaming(true);
+    setImageType(formData.afbeeldingType);
+    setOnderwerp(formData.onderwerp);
+
+    try {
+      const response = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
+
+      if (!response.ok) {
+        throw new Error('Generatie mislukt');
+      }
+
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error('Geen response stream');
+
+      const decoder = new TextDecoder();
+      let fullContent = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value);
+        const lines = chunk.split('\n');
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.slice(6));
+
+              if (data.type === 'prompt') {
+                setPrompt(data.content);
+              } else if (data.type === 'content') {
+                fullContent += data.content;
+                setContent(fullContent);
+              } else if (data.type === 'done') {
+                setIsStreaming(false);
+                setAppState('result');
+
+                // Fetch images based on type
+                if (formData.afbeeldingType === 'stock') {
+                  fetchStockImages(fullContent);
+                } else if (formData.afbeeldingType === 'ai') {
+                  fetchAiImages(fullContent, formData.onderwerp);
+                }
+              }
+            } catch {
+              // Ignore parsing errors for incomplete chunks
+            }
+          }
+        }
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Er ging iets mis');
+      setIsStreaming(false);
+      setAppState('input');
+    }
+  };
+
+  const extractImageTerms = (generatedContent: string): string[] => {
+    const imageMatches = generatedContent.match(/\[AFBEELDING:\s*([^\]]+)\]/g);
+    if (!imageMatches) return [];
+
+    return imageMatches.map((match) => {
+      const terms = match.match(/\[AFBEELDING:\s*([^\]]+)\]/);
+      return terms ? terms[1] : '';
+    }).filter(Boolean);
+  };
+
+  const fetchStockImages = async (generatedContent: string) => {
+    const searchTerms = extractImageTerms(generatedContent);
+    if (searchTerms.length === 0) return;
+
+    setIsLoadingImages(true);
+    try {
+      const response = await fetch('/api/images', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ searchTerms }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setImages(data.images);
+      }
+    } catch (err) {
+      console.error('Error fetching stock images:', err);
+    } finally {
+      setIsLoadingImages(false);
+    }
+  };
+
+  const fetchAiImages = async (generatedContent: string, onderwerp: string) => {
+    const searchTerms = extractImageTerms(generatedContent);
+    if (searchTerms.length === 0) return;
+
+    setIsLoadingImages(true);
+    const generatedImages: ChapterImage[] = [];
+
+    // Generate images one by one
+    for (const term of searchTerms) {
+      try {
+        const response = await fetch('/api/generate-image', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: term, onderwerp }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.imageUrl) {
+            generatedImages.push({
+              url: data.imageUrl,
+              alt: data.alt || term,
+              isAiGenerated: true,
+            });
+            // Update images progressively
+            setImages([...generatedImages]);
+          }
+        }
+      } catch (err) {
+        console.error('Error generating AI image:', err);
+      }
+    }
+
+    setIsLoadingImages(false);
+  };
+
+  const handleReset = () => {
+    setAppState('input');
+    setContent('');
+    setPrompt('');
+    setImages([]);
+    setError(null);
+  };
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+    <div className="min-h-screen bg-background">
+      <Header />
+
+      <main className="max-w-4xl mx-auto px-4 py-8">
+        {appState === 'input' && (
+          <div className="space-y-8">
+            {/* Intro */}
+            <div className="bg-white rounded-xl p-6 border border-border">
+              <h2 className="text-lg font-semibold mb-2">
+                Genereer een compleet hoofdstuk
+              </h2>
+              <p className="text-secondary text-sm">
+                Kies een onderwerp, selecteer het niveau van je doelgroep, en
+                ontvang binnen enkele momenten een volledig uitgewerkt
+                hoofdstuk met theorie, voorbeelden en opdrachten.
+              </p>
+              <div className="mt-4 p-3 bg-accent rounded-lg">
+                <p className="text-xs text-secondary">
+                  <strong>Transparantie:</strong> Na het genereren kun je de
+                  gebruikte prompt bekijken. Zo leer je hoe je dit zelf kunt
+                  doen met andere AI-tools.
+                </p>
+              </div>
+            </div>
+
+            {/* Error message */}
+            {error && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700 text-sm">
+                {error}
+              </div>
+            )}
+
+            {/* Form */}
+            <div className="bg-white rounded-xl p-6 border border-border">
+              <InputForm onSubmit={handleSubmit} isLoading={false} />
+            </div>
+          </div>
+        )}
+
+        {(appState === 'generating' || appState === 'result') && (
+          <div className="space-y-6">
+            {/* Back button */}
+            <button
+              onClick={handleReset}
+              className="flex items-center gap-2 text-secondary hover:text-foreground transition-colors"
             >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M15 19l-7-7 7-7"
+                />
+              </svg>
+              Nieuw hoofdstuk maken
+            </button>
+
+            {/* Status */}
+            {(isStreaming || isLoadingImages) && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-center gap-3">
+                <svg className="animate-spin h-5 w-5 text-blue-600" viewBox="0 0 24 24">
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                    fill="none"
+                  />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  />
+                </svg>
+                <span className="text-blue-700 text-sm">
+                  {isStreaming ? (
+                    <>
+                      Hoofdstuk wordt gegenereerd...
+                      {imageType !== 'geen' && (
+                        imageType === 'ai'
+                          ? ' Daarna worden AI-afbeeldingen gegenereerd.'
+                          : ' Daarna worden afbeeldingen gezocht.'
+                      )}
+                    </>
+                  ) : isLoadingImages ? (
+                    imageType === 'ai'
+                      ? `AI-afbeeldingen worden gegenereerd (${images.length} klaar)...`
+                      : 'Afbeeldingen worden gezocht...'
+                  ) : null}
+                </span>
+              </div>
+            )}
+
+            {/* Chapter display */}
+            <ChapterDisplay
+              content={content}
+              prompt={prompt}
+              images={images}
+              isStreaming={isStreaming}
+            />
+          </div>
+        )}
+      </main>
+
+      {/* Footer */}
+      <footer className="border-t border-border mt-16">
+        <div className="max-w-4xl mx-auto px-4 py-6 text-center text-xs text-secondary">
+          <p>
+            Deze tool laat zien dat iedereen met AI zelf lesmateriaal kan maken.
+          </p>
+          <p className="mt-1">
+            Controleer gegenereerde inhoud altijd op feitelijke juistheid.
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+      </footer>
     </div>
   );
 }
