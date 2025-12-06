@@ -34,34 +34,28 @@ USING (
 );
 
 -- Nieuwe gecombineerde policy voor hoofdstukken (eigen OF publiek)
+-- Gebruik IN voor betere performance
 CREATE POLICY "Gebruikers kunnen hoofdstukken van eigen handboeken zien"
 ON hoofdstukken
 FOR SELECT
 TO anon, authenticated
 USING (
-  EXISTS (
-    SELECT 1 FROM handboeken
-    WHERE handboeken.id = hoofdstukken.handboek_id
-    AND (
-      handboeken.user_id = auth.uid()
-      OR handboeken.is_publiek = TRUE
-    )
+  handboek_id IN (
+    SELECT id FROM handboeken
+    WHERE user_id = auth.uid() OR is_publiek = TRUE
   )
 );
 
 -- Nieuwe gecombineerde policy voor afbeeldingen (eigen OF publiek)
+-- Gebruik een simpelere query structuur voor betere performance
 CREATE POLICY "Gebruikers kunnen afbeeldingen van eigen hoofdstukken zien"
 ON afbeeldingen
 FOR SELECT
 TO anon, authenticated
 USING (
-  EXISTS (
-    SELECT 1 FROM hoofdstukken
-    JOIN handboeken ON handboeken.id = hoofdstukken.handboek_id
-    WHERE hoofdstukken.id = afbeeldingen.hoofdstuk_id
-    AND (
-      handboeken.user_id = auth.uid()
-      OR handboeken.is_publiek = TRUE
-    )
+  hoofdstuk_id IN (
+    SELECT h.id FROM hoofdstukken h
+    INNER JOIN handboeken hb ON hb.id = h.handboek_id
+    WHERE hb.user_id = auth.uid() OR hb.is_publiek = TRUE
   )
 );
