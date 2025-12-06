@@ -7,7 +7,7 @@ import Header from '@/components/Header';
 import ChapterDisplay from '@/components/ChapterDisplay';
 import { useAuth } from '@/hooks/useAuth';
 import { createClient } from '@/lib/supabase/client';
-import { Handboek, Hoofdstuk, Lengte, AfbeeldingType, ChapterImage, getTemplate, WOORDEN_PER_LENGTE } from '@/types';
+import { Handboek, Hoofdstuk, Lengte, AfbeeldingType, ChapterImage, getTemplate, WOORDEN_PER_LENGTE, HoofdstukPlan } from '@/types';
 
 const LENGTES: { value: Lengte; label: string; description: string; woorden: number }[] = [
   { value: 'kort', label: 'Kort', description: '~800 woorden', woorden: 800 },
@@ -35,6 +35,7 @@ export default function NieuwHoofdstukPage() {
   const [error, setError] = useState<string | null>(null);
 
   // Form state
+  const [selectedPlan, setSelectedPlan] = useState<HoofdstukPlan | null>(null);
   const [onderwerp, setOnderwerp] = useState('');
   const [leerdoelen, setLeerdoelen] = useState('');
   const [lengte, setLengte] = useState<Lengte>('medium');
@@ -98,6 +99,28 @@ export default function NieuwHoofdstukPage() {
       fetchHandboekEnHoofdstukken();
     }
   }, [user, handboekId]);
+
+  // Haal geplande hoofdstukken op die nog niet gegenereerd zijn
+  const getOngegeneerdeHoofdstukken = (): HoofdstukPlan[] => {
+    if (!handboek?.structuur?.hoofdstukken) return [];
+
+    return handboek.structuur.hoofdstukken.filter(plan => {
+      // Check of er al een hoofdstuk bestaat met vergelijkbare titel
+      const isAlGegenereerd = eerdereHoofdstukken.some(h =>
+        h.titel.toLowerCase().trim() === plan.titel.toLowerCase().trim() ||
+        h.onderwerp.toLowerCase().includes(plan.titel.toLowerCase().trim())
+      );
+      return !isAlGegenereerd && plan.status !== 'generated';
+    });
+  };
+
+  const handleSelectPlan = (plan: HoofdstukPlan) => {
+    setSelectedPlan(plan);
+    setOnderwerp(plan.titel);
+    if (plan.beschrijving) {
+      setLeerdoelen(plan.beschrijving);
+    }
+  };
 
   const extractImageTerms = (generatedContent: string): string[] => {
     const imageMatches = generatedContent.match(/\[AFBEELDING:\s*([^\]]+)\]/g);
@@ -335,6 +358,20 @@ export default function NieuwHoofdstukPage() {
       }
     }
 
+    // Update de structuur als dit een gepland hoofdstuk was
+    if (selectedPlan && handboek?.structuur?.hoofdstukken) {
+      const updatedHoofdstukken = handboek.structuur.hoofdstukken.map(h =>
+        h.id === selectedPlan.id
+          ? { ...h, status: 'generated' as const, hoofdstukId: hoofdstukData.id }
+          : h
+      );
+
+      await supabase
+        .from('handboeken')
+        .update({ structuur: { hoofdstukken: updatedHoofdstukken } })
+        .eq('id', handboekId);
+    }
+
     setSavedHoofdstukId(hoofdstukData.id);
     setIsSaving(false);
   };
@@ -408,6 +445,61 @@ export default function NieuwHoofdstukPage() {
                 </span>
               )}
             </div>
+
+            {/* Geplande hoofdstukken */}
+            {(() => {
+              const ongegenereerd = getOngegeneerdeHoofdstukken();
+              if (ongegenereerd.length === 0) return null;
+
+              return (
+                <div className="bg-gradient-to-r from-primary/10 to-blue-100 border border-primary/30 rounded-lg p-4 mb-6">
+                  <p className="text-foreground text-sm font-medium mb-3">
+                    Kies een gepland hoofdstuk om te genereren:
+                  </p>
+                  <div className="space-y-2">
+                    {ongegenereerd.map((plan, index) => {
+                      // Bereken het volgordenummer in de originele structuur
+                      const origIndex = handboek?.structuur?.hoofdstukken.findIndex(h => h.id === plan.id) ?? index;
+                      return (
+                        <button
+                          key={plan.id}
+                          type="button"
+                          onClick={() => handleSelectPlan(plan)}
+                          className={`w-full text-left p-3 rounded-lg border transition-all ${
+                            selectedPlan?.id === plan.id
+                              ? 'bg-primary text-white border-primary'
+                              : 'bg-white border-border hover:border-primary'
+                          }`}
+                        >
+                          <div className="flex items-start gap-3">
+                            <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium flex-shrink-0 ${
+                              selectedPlan?.id === plan.id
+                                ? 'bg-white/20 text-white'
+                                : 'bg-accent text-secondary'
+                            }`}>
+                              {origIndex + 1}
+                            </span>
+                            <div className="flex-1 min-w-0">
+                              <span className="font-medium block">{plan.titel}</span>
+                              {plan.beschrijving && (
+                                <span className={`text-xs block mt-0.5 ${
+                                  selectedPlan?.id === plan.id ? 'text-white/80' : 'text-secondary'
+                                }`}>
+                                  {plan.beschrijving}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="text-xs text-secondary mt-3">
+                    Of vul hieronder zelf een onderwerp in.
+                  </p>
+                </div>
+              );
+            })()}
 
             {eerdereHoofdstukken.length > 0 && (
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
