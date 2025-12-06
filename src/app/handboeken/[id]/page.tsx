@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import Header from '@/components/Header';
+import ShareHandboek from '@/components/ShareHandboek';
 import { useAuth } from '@/hooks/useAuth';
 import { createClient } from '@/lib/supabase/client';
 import { Handboek, Hoofdstuk, Afbeelding, getTemplate, HoofdstukPlan } from '@/types';
@@ -291,12 +292,22 @@ export default function HandboekDetailPage() {
                 )}
               </div>
             </div>
-            <button
-              onClick={handleDeleteHandboek}
-              className="text-red-600 hover:text-red-700 text-sm"
-            >
-              Verwijderen
-            </button>
+            <div className="flex items-center gap-3">
+              <ShareHandboek
+                handboekId={handboekId}
+                isPubliek={handboek.is_publiek}
+                publiekeSlug={handboek.publieke_slug}
+                onUpdate={(isPubliek, slug) => {
+                  setHandboek({ ...handboek, is_publiek: isPubliek, publieke_slug: slug });
+                }}
+              />
+              <button
+                onClick={handleDeleteHandboek}
+                className="text-red-600 hover:text-red-700 text-sm"
+              >
+                Verwijderen
+              </button>
+            </div>
           </div>
 
           {/* Export buttons */}

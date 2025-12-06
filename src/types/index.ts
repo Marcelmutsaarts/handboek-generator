@@ -179,6 +179,8 @@ export interface Handboek {
   template: TemplateType;
   custom_secties: TemplateSection[] | null;
   structuur: HandboekStructuur | null; // Geplande hoofdstukindeling
+  is_publiek: boolean;
+  publieke_slug: string | null;
   created_at: string;
   updated_at: string;
 }
