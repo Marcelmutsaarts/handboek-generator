@@ -61,13 +61,18 @@ export default function PubliekHandboekPage() {
         // Fetch afbeeldingen
         if (hoofdstukkenData.length > 0) {
           const hoofdstukIds = hoofdstukkenData.map((h) => h.id);
-          const { data: afbeeldingenData } = await supabase
+          const { data: afbeeldingenData, error: afbeeldingenError } = await supabase
             .from('afbeeldingen')
             .select('*')
             .in('hoofdstuk_id', hoofdstukIds)
             .order('volgorde', { ascending: true });
 
+          if (afbeeldingenError) {
+            console.error('Error fetching afbeeldingen:', afbeeldingenError);
+          }
+
           if (afbeeldingenData) {
+            console.log('Afbeeldingen gevonden:', afbeeldingenData.length);
             const grouped: Record<string, Afbeelding[]> = {};
             afbeeldingenData.forEach((afb) => {
               if (!grouped[afb.hoofdstuk_id]) {
