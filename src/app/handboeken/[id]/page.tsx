@@ -365,7 +365,7 @@ export default function HandboekDetailPage() {
             </div>
 
             {/* Progress bar */}
-            <div className="h-2 bg-accent rounded-full overflow-hidden">
+            <div className="h-2 bg-accent rounded-full overflow-hidden mb-3">
               {(() => {
                 const structuurWithProgress = getStructuurWithProgress();
                 const generated = structuurWithProgress.filter(h => h.status === 'generated').length;
@@ -379,6 +379,30 @@ export default function HandboekDetailPage() {
                 );
               })()}
             </div>
+
+            {/* Compacte preview als ingeklapt */}
+            {!showStructure && (
+              <div className="text-sm text-secondary">
+                {(() => {
+                  const structuur = getStructuurWithProgress();
+                  const preview = structuur.slice(0, 3);
+                  const rest = structuur.length - 3;
+                  return (
+                    <span>
+                      {preview.map((h, i) => (
+                        <span key={h.id}>
+                          <span className={h.status === 'generated' ? 'text-green-600' : ''}>
+                            {h.titel}
+                          </span>
+                          {i < preview.length - 1 && ' · '}
+                        </span>
+                      ))}
+                      {rest > 0 && <span className="text-secondary/60"> +{rest} meer</span>}
+                    </span>
+                  );
+                })()}
+              </div>
+            )}
 
             {showStructure && (
               <div className="mt-6 pt-6 border-t border-border">
