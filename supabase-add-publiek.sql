@@ -12,6 +12,9 @@ CREATE INDEX IF NOT EXISTS idx_handboeken_publieke_slug ON handboeken(publieke_s
 -- Extra index voor publieke handboeken (voor snelle RLS checks)
 CREATE INDEX IF NOT EXISTS idx_handboeken_is_publiek ON handboeken(is_publiek) WHERE is_publiek = TRUE;
 
+-- Samengestelde index voor afbeeldingen: voorkomt in-memory sort bij ORDER BY volgorde
+CREATE INDEX IF NOT EXISTS idx_afbeeldingen_hoofdstuk_volgorde ON afbeeldingen(hoofdstuk_id, volgorde);
+
 -- =====================================================
 -- STAP 1: Verwijder ALLE bestaande SELECT policies
 -- =====================================================
