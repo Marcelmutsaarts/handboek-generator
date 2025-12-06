@@ -6,8 +6,9 @@ import Link from 'next/link';
 import Header from '@/components/Header';
 import { useAuth } from '@/hooks/useAuth';
 import { createClient } from '@/lib/supabase/client';
-import { Handboek, Hoofdstuk, Afbeelding, getTemplate } from '@/types';
+import { Handboek, Hoofdstuk, Afbeelding, getTemplate, HoofdstukPlan } from '@/types';
 import { exportHandboekAsWord, exportHandboekAsHTML, exportHandboekAsMarkdown } from '@/lib/export';
+import StructureEditor from '@/components/StructureEditor';
 
 const NIVEAU_LABELS: Record<string, string> = {
   vmbo: 'VMBO',
@@ -29,7 +30,9 @@ export default function HandboekDetailPage() {
   const [afbeeldingenPerHoofdstuk, setAfbeeldingenPerHoofdstuk] = useState<Record<string, Afbeelding[]>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
+  const [isSavingStructure, setIsSavingStructure] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showStructure, setShowStructure] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -101,6 +104,45 @@ export default function HandboekDetailPage() {
       fetchData();
     }
   }, [user, handboekId]);
+
+  // Bereken welke geplande hoofdstukken al gegenereerd zijn
+  const getStructuurWithProgress = (): HoofdstukPlan[] => {
+    if (!handboek?.structuur?.hoofdstukken) return [];
+
+    return handboek.structuur.hoofdstukken.map(plan => {
+      // Check of er al een hoofdstuk bestaat met een vergelijkbare titel
+      const matchingHoofdstuk = hoofdstukken.find(h =>
+        h.titel.toLowerCase().trim() === plan.titel.toLowerCase().trim() ||
+        h.onderwerp.toLowerCase().includes(plan.titel.toLowerCase().trim())
+      );
+
+      if (matchingHoofdstuk) {
+        return { ...plan, status: 'generated' as const, hoofdstukId: matchingHoofdstuk.id };
+      }
+      return plan;
+    });
+  };
+
+  const handleSaveStructure = async (newStructuur: HoofdstukPlan[]) => {
+    if (!handboek) return;
+
+    setIsSavingStructure(true);
+    const supabase = createClient();
+
+    const { error } = await supabase
+      .from('handboeken')
+      .update({ structuur: { hoofdstukken: newStructuur } })
+      .eq('id', handboekId);
+
+    if (error) {
+      console.error('Error saving structure:', error);
+      setError('Kon structuur niet opslaan');
+    } else {
+      setHandboek({ ...handboek, structuur: { hoofdstukken: newStructuur } });
+    }
+
+    setIsSavingStructure(false);
+  };
 
   const handleDeleteHandboek = async () => {
     if (!confirm('Weet je zeker dat je dit handboek wilt verwijderen? Alle hoofdstukken worden ook verwijderd.')) {
@@ -279,6 +321,80 @@ export default function HandboekDetailPage() {
           )}
         </div>
 
+        {/* Structuur sectie - alleen tonen als er een structuur is */}
+        {handboek.structuur && handboek.structuur.hoofdstukken.length > 0 && (
+          <div className="bg-white rounded-xl p-6 border border-border mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
+                  Hoofdstukindeling
+                  {isSavingStructure && (
+                    <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full"></div>
+                  )}
+                </h2>
+                <p className="text-sm text-secondary mt-1">
+                  {(() => {
+                    const structuurWithProgress = getStructuurWithProgress();
+                    const generated = structuurWithProgress.filter(h => h.status === 'generated').length;
+                    const total = structuurWithProgress.length;
+                    return `${generated} van ${total} hoofdstukken gegenereerd`;
+                  })()}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowStructure(!showStructure)}
+                className="text-sm text-primary hover:underline flex items-center gap-1"
+              >
+                {showStructure ? (
+                  <>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                    </svg>
+                    Verbergen
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                    Bekijken & bewerken
+                  </>
+                )}
+              </button>
+            </div>
+
+            {/* Progress bar */}
+            <div className="h-2 bg-accent rounded-full overflow-hidden">
+              {(() => {
+                const structuurWithProgress = getStructuurWithProgress();
+                const generated = structuurWithProgress.filter(h => h.status === 'generated').length;
+                const total = structuurWithProgress.length;
+                const percentage = total > 0 ? (generated / total) * 100 : 0;
+                return (
+                  <div
+                    className="h-full bg-green-500 transition-all duration-300"
+                    style={{ width: `${percentage}%` }}
+                  />
+                );
+              })()}
+            </div>
+
+            {showStructure && (
+              <div className="mt-6 pt-6 border-t border-border">
+                <StructureEditor
+                  structuur={getStructuurWithProgress()}
+                  onChange={handleSaveStructure}
+                  disabled={isSavingStructure}
+                />
+                <p className="text-xs text-secondary mt-4">
+                  Klik op &quot;Nieuw hoofdstuk&quot; om een gepland hoofdstuk te genereren. Gegenereerde hoofdstukken worden automatisch gekoppeld aan het plan.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Hoofdstukken section */}
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-foreground">
@@ -304,7 +420,9 @@ export default function HandboekDetailPage() {
               Nog geen hoofdstukken
             </h3>
             <p className="text-secondary text-sm mb-6">
-              Voeg je eerste hoofdstuk toe aan dit handboek.
+              {handboek.structuur && handboek.structuur.hoofdstukken.length > 0
+                ? `Er zijn ${handboek.structuur.hoofdstukken.length} hoofdstukken gepland. Genereer je eerste hoofdstuk.`
+                : 'Voeg je eerste hoofdstuk toe aan dit handboek.'}
             </p>
             <Link
               href={`/handboeken/${handboekId}/nieuw-hoofdstuk`}

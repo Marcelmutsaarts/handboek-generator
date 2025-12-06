@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import InputForm from '@/components/InputForm';
 import ChapterDisplay from '@/components/ChapterDisplay';
 import Header from '@/components/Header';
@@ -171,10 +172,33 @@ export default function Home() {
       <main className="max-w-4xl mx-auto px-4 py-8">
         {appState === 'input' && (
           <div className="space-y-8">
+            {/* Nieuw handboek CTA */}
+            <div className="bg-gradient-to-r from-primary to-blue-600 rounded-xl p-6 text-white">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div>
+                  <h2 className="text-xl font-bold mb-2">
+                    Nieuw handboek aanmaken
+                  </h2>
+                  <p className="text-blue-100 text-sm">
+                    Laat AI een complete hoofdstukindeling genereren en bouw stap voor stap je handboek op.
+                  </p>
+                </div>
+                <Link
+                  href="/handboeken/nieuw"
+                  className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-white text-primary font-medium rounded-lg hover:bg-blue-50 transition-colors whitespace-nowrap"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                  </svg>
+                  Start nieuw handboek
+                </Link>
+              </div>
+            </div>
+
             {/* Intro */}
             <div className="bg-white rounded-xl p-6 border border-border">
               <h2 className="text-lg font-semibold mb-2">
-                Genereer een compleet hoofdstuk
+                Of genereer een los hoofdstuk
               </h2>
               <p className="text-secondary text-sm">
                 Kies een onderwerp, selecteer het niveau van je doelgroep, en

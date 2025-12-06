@@ -152,6 +152,20 @@ export interface UnsplashPhoto {
   };
 }
 
+// Hoofdstuk structuur voor planning
+export interface HoofdstukPlan {
+  id: string; // Unieke ID voor drag & drop
+  titel: string;
+  beschrijving: string;
+  paragrafen?: string[]; // Optionele paragraaf titels
+  status: 'pending' | 'generated'; // Of het hoofdstuk al geschreven is
+  hoofdstukId?: string; // Link naar gegenereerd hoofdstuk (indien status === 'generated')
+}
+
+export interface HandboekStructuur {
+  hoofdstukken: HoofdstukPlan[];
+}
+
 // Database types
 export interface Handboek {
   id: string;
@@ -163,6 +177,7 @@ export interface Handboek {
   context: string | null;
   template: TemplateType;
   custom_secties: TemplateSection[] | null;
+  structuur: HandboekStructuur | null; // Geplande hoofdstukindeling
   created_at: string;
   updated_at: string;
 }
