@@ -33,6 +33,7 @@ export default function HandboekDetailPage() {
   const [isSavingStructure, setIsSavingStructure] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showStructure, setShowStructure] = useState(false);
+  const [showFullDescription, setShowFullDescription] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -244,7 +245,34 @@ export default function HandboekDetailPage() {
             <div>
               <h1 className="text-2xl font-bold text-foreground mb-2">{handboek.titel}</h1>
               {handboek.beschrijving && (
-                <p className="text-secondary mb-4">{handboek.beschrijving}</p>
+                <div className="mb-4">
+                  {handboek.beschrijving.length > 150 && !showFullDescription ? (
+                    <p className="text-secondary text-sm">
+                      {handboek.beschrijving.slice(0, 150).trim()}...{' '}
+                      <button
+                        onClick={() => setShowFullDescription(true)}
+                        className="text-primary hover:underline"
+                      >
+                        meer tonen
+                      </button>
+                    </p>
+                  ) : (
+                    <p className="text-secondary text-sm">
+                      {handboek.beschrijving}
+                      {handboek.beschrijving.length > 150 && (
+                        <>
+                          {' '}
+                          <button
+                            onClick={() => setShowFullDescription(false)}
+                            className="text-primary hover:underline"
+                          >
+                            minder tonen
+                          </button>
+                        </>
+                      )}
+                    </p>
+                  )}
+                </div>
               )}
               <div className="flex flex-wrap items-center gap-2 text-sm">
                 <span className="px-3 py-1 bg-accent rounded-lg">
