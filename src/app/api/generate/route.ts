@@ -20,6 +20,7 @@ interface RequestBody {
   leerjaar?: number;
   leerdoelen?: string;
   lengte?: string;
+  woordenAantal?: number;
   metAfbeeldingen?: boolean;
   afbeeldingType?: string;
   context?: string;
@@ -38,6 +39,7 @@ export async function POST(request: NextRequest) {
       leerjaar: body.leerjaar || 1,
       leerdoelen: body.leerdoelen || '',
       lengte: body.lengte as FormData['lengte'] || 'medium',
+      woordenAantal: body.woordenAantal || 1500,
       metAfbeeldingen: body.metAfbeeldingen ?? true,
       afbeeldingType: body.afbeeldingType as FormData['afbeeldingType'] || 'stock',
       context: body.context || '',

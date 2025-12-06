@@ -102,12 +102,20 @@ export const LEERJAREN_PER_NIVEAU: Record<Niveau, number[]> = {
   uni: [1, 2, 3],
 };
 
+// Standaard woordenaantallen per lengte categorie
+export const WOORDEN_PER_LENGTE: Record<Lengte, number> = {
+  kort: 800,
+  medium: 1500,
+  lang: 2500,
+};
+
 export interface FormData {
   onderwerp: string;
   niveau: Niveau;
   leerjaar: number;
   leerdoelen: string;
   lengte: Lengte;
+  woordenAantal: number; // exact aantal woorden (kan afwijken van lengte preset)
   metAfbeeldingen: boolean;
   afbeeldingType: AfbeeldingType;
   context: string; // optioneel: hobby/interessegebied voor personalisatie

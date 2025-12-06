@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { FormData, Niveau, Lengte, AfbeeldingType, TemplateType, TemplateSection, LEERJAREN_PER_NIVEAU } from '@/types';
+import { FormData, Niveau, Lengte, AfbeeldingType, TemplateType, TemplateSection, LEERJAREN_PER_NIVEAU, WOORDEN_PER_LENGTE } from '@/types';
 import TemplateSelector from './TemplateSelector';
 
 interface InputFormProps {
@@ -37,12 +37,16 @@ export default function InputForm({ onSubmit, isLoading }: InputFormProps) {
     leerjaar: 1,
     leerdoelen: '',
     lengte: 'medium',
+    woordenAantal: WOORDEN_PER_LENGTE.medium,
     metAfbeeldingen: true,
     afbeeldingType: 'stock',
     context: '',
     template: 'klassiek',
     customSecties: [],
   });
+
+  // Bepaal of de slider afwijkt van de preset
+  const isCustomWoorden = formData.woordenAantal !== WOORDEN_PER_LENGTE[formData.lengte];
 
   // Update leerjaar when niveau changes (reset to 1 if current leerjaar is not valid)
   useEffect(() => {
@@ -171,16 +175,22 @@ export default function InputForm({ onSubmit, isLoading }: InputFormProps) {
         <label className="block text-sm font-medium mb-2">
           Lengte van het hoofdstuk
         </label>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-3 gap-2 mb-4">
           {LENGTES.map((lengte) => (
             <button
               key={lengte.value}
               type="button"
-              onClick={() => setFormData({ ...formData, lengte: lengte.value })}
+              onClick={() => setFormData({
+                ...formData,
+                lengte: lengte.value,
+                woordenAantal: WOORDEN_PER_LENGTE[lengte.value]
+              })}
               disabled={isLoading}
               className={`px-4 py-3 rounded-lg border transition-all ${
-                formData.lengte === lengte.value
+                formData.lengte === lengte.value && !isCustomWoorden
                   ? 'bg-primary text-white border-primary'
+                  : formData.lengte === lengte.value && isCustomWoorden
+                  ? 'bg-primary/20 border-primary text-primary'
                   : 'bg-white border-border hover:border-primary'
               } disabled:opacity-50`}
             >
@@ -190,6 +200,45 @@ export default function InputForm({ onSubmit, isLoading }: InputFormProps) {
               </span>
             </button>
           ))}
+        </div>
+
+        {/* Slider voor fijnafstemming */}
+        <div className="bg-accent rounded-lg p-4">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm text-secondary">Fijnafstemming:</span>
+            <span className="text-sm font-medium">
+              {formData.woordenAantal} woorden
+              {isCustomWoorden && (
+                <button
+                  type="button"
+                  onClick={() => setFormData({
+                    ...formData,
+                    woordenAantal: WOORDEN_PER_LENGTE[formData.lengte]
+                  })}
+                  className="ml-2 text-xs text-primary hover:underline"
+                >
+                  Reset
+                </button>
+              )}
+            </span>
+          </div>
+          <input
+            type="range"
+            min="400"
+            max="4000"
+            step="100"
+            value={formData.woordenAantal}
+            onChange={(e) => setFormData({
+              ...formData,
+              woordenAantal: parseInt(e.target.value)
+            })}
+            disabled={isLoading}
+            className="w-full h-2 bg-white rounded-lg appearance-none cursor-pointer accent-primary disabled:opacity-50"
+          />
+          <div className="flex justify-between text-xs text-secondary mt-1">
+            <span>400</span>
+            <span>4000</span>
+          </div>
         </div>
       </div>
 

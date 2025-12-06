@@ -1,10 +1,4 @@
-import { FormData, TemplateType, TemplateSection, getTemplate, TEMPLATES } from '@/types';
-
-const WOORDEN_MAP = {
-  kort: 800,
-  medium: 1500,
-  lang: 2500,
-};
+import { FormData, TemplateType, TemplateSection, getTemplate, TEMPLATES, WOORDEN_PER_LENGTE } from '@/types';
 
 const NIVEAU_BESCHRIJVING: Record<string, { doelgroep: string; taalrichtlijnen: string }> = {
   vmbo: {
@@ -228,8 +222,9 @@ Samenvatting en conclusie.`,
 }
 
 export function buildPrompt(data: FormData): string {
-  const { onderwerp, niveau, leerjaar, leerdoelen, lengte, metAfbeeldingen, context, template, customSecties } = data;
-  const woordenaantal = WOORDEN_MAP[lengte];
+  const { onderwerp, niveau, leerjaar, leerdoelen, lengte, woordenAantal, metAfbeeldingen, context, template, customSecties } = data;
+  // Gebruik custom woordenaantal als opgegeven, anders fallback naar preset
+  const woordenaantal = woordenAantal || WOORDEN_PER_LENGTE[lengte];
   const niveauInfo = NIVEAU_BESCHRIJVING[niveau];
   const leerjaarInfo = LEERJAAR_AANPASSINGEN[niveau]?.[leerjaar] || '';
 

@@ -7,12 +7,12 @@ import Header from '@/components/Header';
 import ChapterDisplay from '@/components/ChapterDisplay';
 import { useAuth } from '@/hooks/useAuth';
 import { createClient } from '@/lib/supabase/client';
-import { Handboek, Hoofdstuk, Lengte, AfbeeldingType, ChapterImage, getTemplate } from '@/types';
+import { Handboek, Hoofdstuk, Lengte, AfbeeldingType, ChapterImage, getTemplate, WOORDEN_PER_LENGTE } from '@/types';
 
-const LENGTES: { value: Lengte; label: string; description: string }[] = [
-  { value: 'kort', label: 'Kort', description: '~800 woorden' },
-  { value: 'medium', label: 'Medium', description: '~1500 woorden' },
-  { value: 'lang', label: 'Lang', description: '~2500 woorden' },
+const LENGTES: { value: Lengte; label: string; description: string; woorden: number }[] = [
+  { value: 'kort', label: 'Kort', description: '~800 woorden', woorden: 800 },
+  { value: 'medium', label: 'Medium', description: '~1500 woorden', woorden: 1500 },
+  { value: 'lang', label: 'Lang', description: '~2500 woorden', woorden: 2500 },
 ];
 
 const AFBEELDING_TYPES: { value: AfbeeldingType; label: string; description: string }[] = [
@@ -38,7 +38,11 @@ export default function NieuwHoofdstukPage() {
   const [onderwerp, setOnderwerp] = useState('');
   const [leerdoelen, setLeerdoelen] = useState('');
   const [lengte, setLengte] = useState<Lengte>('medium');
+  const [woordenAantal, setWoordenAantal] = useState(WOORDEN_PER_LENGTE.medium);
   const [afbeeldingType, setAfbeeldingType] = useState<AfbeeldingType>('stock');
+
+  // Bepaal of slider afwijkt van preset
+  const isCustomWoorden = woordenAantal !== WOORDEN_PER_LENGTE[lengte];
 
   // Generation state
   const [content, setContent] = useState('');
@@ -180,6 +184,7 @@ export default function NieuwHoofdstukPage() {
         leerjaar: handboek.leerjaar,
         leerdoelen: leerdoelen.trim(),
         lengte,
+        woordenAantal,
         metAfbeeldingen: afbeeldingType !== 'geen',
         afbeeldingType,
         context: handboek.context || '',
@@ -463,15 +468,20 @@ export default function NieuwHoofdstukPage() {
               {/* Lengte */}
               <div>
                 <label className="block text-sm font-medium mb-2">Lengte</label>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-3 gap-2 mb-4">
                   {LENGTES.map((l) => (
                     <button
                       key={l.value}
                       type="button"
-                      onClick={() => setLengte(l.value)}
+                      onClick={() => {
+                        setLengte(l.value);
+                        setWoordenAantal(l.woorden);
+                      }}
                       className={`px-4 py-3 rounded-lg border transition-all ${
-                        lengte === l.value
+                        lengte === l.value && !isCustomWoorden
                           ? 'bg-primary text-white border-primary'
+                          : lengte === l.value && isCustomWoorden
+                          ? 'bg-primary/20 border-primary text-primary'
                           : 'bg-white border-border hover:border-primary'
                       }`}
                     >
@@ -479,6 +489,38 @@ export default function NieuwHoofdstukPage() {
                       <span className="block text-xs mt-0.5 opacity-75">{l.description}</span>
                     </button>
                   ))}
+                </div>
+
+                {/* Slider voor fijnafstemming */}
+                <div className="bg-accent rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm text-secondary">Fijnafstemming:</span>
+                    <span className="text-sm font-medium">
+                      {woordenAantal} woorden
+                      {isCustomWoorden && (
+                        <button
+                          type="button"
+                          onClick={() => setWoordenAantal(WOORDEN_PER_LENGTE[lengte])}
+                          className="ml-2 text-xs text-primary hover:underline"
+                        >
+                          Reset
+                        </button>
+                      )}
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min="400"
+                    max="4000"
+                    step="100"
+                    value={woordenAantal}
+                    onChange={(e) => setWoordenAantal(parseInt(e.target.value))}
+                    className="w-full h-2 bg-white rounded-lg appearance-none cursor-pointer accent-primary"
+                  />
+                  <div className="flex justify-between text-xs text-secondary mt-1">
+                    <span>400</span>
+                    <span>4000</span>
+                  </div>
                 </div>
               </div>
 
