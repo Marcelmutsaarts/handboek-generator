@@ -22,6 +22,7 @@ DROP POLICY IF EXISTS "Hoofdstukken van publieke handboeken zijn leesbaar" ON ho
 DROP POLICY IF EXISTS "Gebruikers kunnen afbeeldingen van eigen hoofdstukken zien" ON afbeeldingen;
 DROP POLICY IF EXISTS "Afbeeldingen van publieke handboeken zijn leesbaar" ON afbeeldingen;
 DROP POLICY IF EXISTS "Afbeeldingen voor eigen hoofdstukken" ON afbeeldingen;
+DROP POLICY IF EXISTS "Afbeeldingen zijn leesbaar" ON afbeeldingen;
 
 -- =====================================================
 -- STAP 2: Policies voor handboeken en hoofdstukken
