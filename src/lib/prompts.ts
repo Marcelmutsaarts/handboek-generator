@@ -224,7 +224,8 @@ Samenvatting en conclusie.`,
 export function buildPrompt(data: FormData): string {
   const { onderwerp, niveau, leerjaar, leerdoelen, lengte, woordenAantal, metAfbeeldingen, context, template, customSecties } = data;
   // Gebruik custom woordenaantal als opgegeven, anders fallback naar preset
-  const woordenaantal = woordenAantal || WOORDEN_PER_LENGTE[lengte];
+  // Factor 1.5 omdat AI minder woorden genereert dan gevraagd (tokens vs woorden)
+  const woordenaantal = Math.round((woordenAantal || WOORDEN_PER_LENGTE[lengte]) * 1.5);
   const niveauInfo = NIVEAU_BESCHRIJVING[niveau];
   const leerjaarInfo = LEERJAAR_AANPASSINGEN[niveau]?.[leerjaar] || '';
 
@@ -312,6 +313,7 @@ Streef naar ongeveer ${woordenaantal} woorden.
 - Gebruik actieve zinnen
 - Vermijd jargon tenzij je het uitlegt
 - Gebruik "je" en "jij" om de lezer aan te spreken
+- Titels en kopjes: alleen eerste woord met hoofdletter (Nederlandse schrijfwijze), dus NIET "De Franse Revolutie" maar "De Franse revolutie"
 
 ## BELANGRIJK
 - Zorg dat alle informatie feitelijk correct is
