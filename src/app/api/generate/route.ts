@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { buildPrompt, buildPromptWithContext } from '@/lib/prompts';
 import { FormData, TemplateSection } from '@/types';
 
-const MODEL = 'google/gemini-2.5-flash-preview-05-20';
+const MODEL = 'google/gemini-3-pro-preview';
 
 // Get API key from request header (user's key) - no fallback to env
 function getApiKey(request: NextRequest): string | null {

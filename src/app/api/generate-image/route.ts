@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const IMAGE_MODEL = 'google/gemini-2.5-flash-image-preview';
+const IMAGE_MODEL = 'google/gemini-2.5-flash-image';
 const INFOGRAPHIC_MODEL = 'google/gemini-3-pro-image-preview';
 
 // Get API key from request header (user's key) - no fallback to env

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Niveau, HoofdstukPlan } from '@/types';
 
-const MODEL = 'google/gemini-2.5-flash-preview-05-20';
+const MODEL = 'google/gemini-3-pro-preview';
 
 // Get API key from request header (user's key) - no fallback to env
 function getApiKey(request: NextRequest): string | null {
@@ -29,6 +29,10 @@ export async function POST(request: NextRequest) {
   try {
     // Get API key from header
     const apiKey = getApiKey(request);
+    console.log('=== Generate Structure Request ===');
+    console.log('Has API key:', !!apiKey);
+    console.log('API key length:', apiKey?.length || 0);
+
     if (!apiKey) {
       return NextResponse.json(
         { error: 'API key is vereist. Stel je OpenRouter API key in via de instellingen.' },
@@ -100,9 +104,19 @@ Zorg dat de JSON geldig is en direct te parsen.`;
     });
 
     if (!response.ok) {
-      const error = await response.text();
-      console.error('OpenRouter error:', error);
-      return NextResponse.json({ error: 'Structuur generatie mislukt' }, { status: 500 });
+      const errorText = await response.text();
+      console.error('OpenRouter error:', response.status, errorText);
+      // Return the actual error from OpenRouter for debugging
+      let errorMessage = 'Structuur generatie mislukt';
+      try {
+        const errorJson = JSON.parse(errorText);
+        if (errorJson.error?.message) {
+          errorMessage = errorJson.error.message;
+        }
+      } catch {
+        // Use default message
+      }
+      return NextResponse.json({ error: errorMessage }, { status: 500 });
     }
 
     const data = await response.json();
