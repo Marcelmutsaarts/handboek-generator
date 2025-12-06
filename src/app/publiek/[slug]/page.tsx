@@ -58,14 +58,11 @@ export default function PubliekHandboekPage() {
       if (hoofdstukkenData) {
         setHoofdstukken(hoofdstukkenData);
 
-        // Fetch afbeeldingen
+        // Fetch afbeeldingen via database functie (omzeilt trage RLS)
         if (hoofdstukkenData.length > 0) {
           const hoofdstukIds = hoofdstukkenData.map((h) => h.id);
           const { data: afbeeldingenData, error: afbeeldingenError } = await supabase
-            .from('afbeeldingen')
-            .select('*')
-            .in('hoofdstuk_id', hoofdstukIds)
-            .order('volgorde', { ascending: true });
+            .rpc('get_public_afbeeldingen', { p_hoofdstuk_ids: hoofdstukIds });
 
           if (afbeeldingenError) {
             console.error('Error fetching afbeeldingen:', afbeeldingenError);
@@ -74,7 +71,7 @@ export default function PubliekHandboekPage() {
           if (afbeeldingenData) {
             console.log('Afbeeldingen gevonden:', afbeeldingenData.length);
             const grouped: Record<string, Afbeelding[]> = {};
-            afbeeldingenData.forEach((afb) => {
+            afbeeldingenData.forEach((afb: Afbeelding) => {
               if (!grouped[afb.hoofdstuk_id]) {
                 grouped[afb.hoofdstuk_id] = [];
               }

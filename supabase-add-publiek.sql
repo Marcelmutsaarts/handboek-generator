@@ -9,6 +9,9 @@ ADD COLUMN IF NOT EXISTS publieke_slug TEXT UNIQUE;
 -- Index voor snelle lookup op slug
 CREATE INDEX IF NOT EXISTS idx_handboeken_publieke_slug ON handboeken(publieke_slug) WHERE publieke_slug IS NOT NULL;
 
+-- Extra index voor publieke handboeken (voor snelle RLS checks)
+CREATE INDEX IF NOT EXISTS idx_handboeken_is_publiek ON handboeken(is_publiek) WHERE is_publiek = TRUE;
+
 -- =====================================================
 -- BELANGRIJKE FIX: Vervang bestaande SELECT policies
 -- De oude policies werken alleen voor eigen data.
@@ -34,7 +37,6 @@ USING (
 );
 
 -- Nieuwe gecombineerde policy voor hoofdstukken (eigen OF publiek)
--- Gebruik IN voor betere performance
 CREATE POLICY "Gebruikers kunnen hoofdstukken van eigen handboeken zien"
 ON hoofdstukken
 FOR SELECT
@@ -46,16 +48,54 @@ USING (
   )
 );
 
--- Nieuwe gecombineerde policy voor afbeeldingen (eigen OF publiek)
--- Gebruik een simpelere query structuur voor betere performance
-CREATE POLICY "Gebruikers kunnen afbeeldingen van eigen hoofdstukken zien"
+-- Voor afbeeldingen: APARTE policies voor authenticated en anon
+-- Dit voorkomt de trage subquery voor anon users
+
+-- Policy voor ingelogde gebruikers (eigen handboeken)
+CREATE POLICY "Afbeeldingen voor eigen hoofdstukken"
 ON afbeeldingen
 FOR SELECT
-TO anon, authenticated
+TO authenticated
 USING (
   hoofdstuk_id IN (
     SELECT h.id FROM hoofdstukken h
     INNER JOIN handboeken hb ON hb.id = h.handboek_id
-    WHERE hb.user_id = auth.uid() OR hb.is_publiek = TRUE
+    WHERE hb.user_id = auth.uid()
   )
 );
+
+-- Policy voor publieke afbeeldingen (iedereen, inclusief anon)
+-- Directe lookup via hoofdstuk_id zonder subquery
+CREATE POLICY "Afbeeldingen van publieke handboeken"
+ON afbeeldingen
+FOR SELECT
+TO anon, authenticated
+USING (
+  EXISTS (
+    SELECT 1 FROM hoofdstukken h, handboeken hb
+    WHERE h.id = afbeeldingen.hoofdstuk_id
+    AND hb.id = h.handboek_id
+    AND hb.is_publiek = TRUE
+  )
+);
+
+-- =====================================================
+-- ALTERNATIEF: Database functie voor publieke afbeeldingen
+-- Gebruik deze functie als de RLS policies te traag zijn
+-- =====================================================
+CREATE OR REPLACE FUNCTION get_public_afbeeldingen(p_hoofdstuk_ids UUID[])
+RETURNS SETOF afbeeldingen
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+AS $$
+  SELECT a.* FROM afbeeldingen a
+  INNER JOIN hoofdstukken h ON h.id = a.hoofdstuk_id
+  INNER JOIN handboeken hb ON hb.id = h.handboek_id
+  WHERE a.hoofdstuk_id = ANY(p_hoofdstuk_ids)
+  AND hb.is_publiek = TRUE
+  ORDER BY a.volgorde ASC;
+$$;
+
+-- Geef anon en authenticated toegang tot de functie
+GRANT EXECUTE ON FUNCTION get_public_afbeeldingen(UUID[]) TO anon, authenticated;
