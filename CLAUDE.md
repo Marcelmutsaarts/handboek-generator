@@ -96,6 +96,7 @@ Alle tabellen hebben RLS policies zodat gebruikers alleen eigen data kunnen zien
 - [x] Hoofdstuk genereren (streaming)
 - [x] 4 voorgedefinieerde templates + custom
 - [x] Afbeeldingen (Pexels stockfoto's + AI-gegenereerd)
+- [x] Infographic generatie (optioneel als laatste afbeelding bij AI-gegenereerd)
 - [x] Export naar Markdown, HTML, Word
 - [x] Google OAuth login
 - [x] 6 niveaus met leerjaren
@@ -107,6 +108,20 @@ Alle tabellen hebben RLS policies zodat gebruikers alleen eigen data kunnen zien
 - [x] Preview met voorblad en inhoudsopgave
 - [x] Hoofdstuk bewerken (handmatig)
 - [x] AI herschrijven van (delen van) hoofdstukken
+
+## Afbeelding Generatie
+
+### Models
+- **Reguliere afbeeldingen**: `google/gemini-2.0-flash-exp:free` (16:9 aspect ratio)
+- **Infographics**: `google/gemini-2.0-flash-exp:free` (1:1 aspect ratio)
+
+### Infographic Feature
+Wanneer "AI-gegenereerd" is geselecteerd voor afbeeldingen, kan de gebruiker optioneel kiezen voor "Laatste afbeelding als infographic". Dit genereert een gedetailleerde visuele samenvatting van het hoofdstuk met:
+- Centrale titel en 4-6 duidelijke secties
+- Iconen, diagrammen en flowcharts
+- Data visualisaties (grafieken, timelines)
+- Korte, puntige teksten en highlight boxes
+- Professioneel educatief kleurenschema
 
 ## Ontwikkel Commando's
 ```bash

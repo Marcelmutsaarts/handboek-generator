@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
-const MODEL = 'google/gemini-2.5-flash-image';
+const IMAGE_MODEL = 'google/gemini-2.5-flash-image-preview';
+const INFOGRAPHIC_MODEL = 'google/gemini-3-pro-image-preview';
 
 interface ImageResponse {
   type: string;
@@ -12,7 +13,18 @@ interface ImageResponse {
 
 export async function POST(request: NextRequest) {
   try {
-    const { prompt, onderwerp }: { prompt: string; onderwerp: string } = await request.json();
+    const { prompt, onderwerp, isInfographic, chapterContent }: {
+      prompt: string;
+      onderwerp: string;
+      isInfographic?: boolean;
+      chapterContent?: string;
+    } = await request.json();
+
+    console.log('=== Image Generation Request ===');
+    console.log('isInfographic:', isInfographic);
+    console.log('hasChapterContent:', !!chapterContent);
+    console.log('chapterContentLength:', chapterContent?.length || 0);
+    console.log('onderwerp:', onderwerp);
 
     if (!OPENROUTER_API_KEY) {
       console.error('OpenRouter API key not configured');
@@ -23,17 +35,73 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Prompt is required' }, { status: 400 });
     }
 
-    // Create a detailed image generation prompt
-    const imagePrompt = `Generate a professional, educational photograph or illustration for a textbook chapter about "${onderwerp}".
+    // Create different prompts based on whether it's an infographic or regular image
+    let imagePrompt: string;
+    let selectedModel: string;
 
-The image should show: ${prompt}
+    if (isInfographic && chapterContent) {
+      selectedModel = INFOGRAPHIC_MODEL;
 
-Style requirements:
-- Photorealistic or high-quality illustration
-- Suitable for educational materials
-- Clear, well-lit, professional appearance
-- No text overlays or watermarks
-- Engaging and relevant to the topic`;
+      // Use the full chapter content for comprehensive infographic generation
+      imagePrompt = `Maak een gedetailleerde, professionele INFOGRAPHIC die de kernconcepten van dit hoofdstuk samenvat.
+
+=== VOLLEDIGE HOOFDSTUKINHOUD ===
+${chapterContent}
+=== EINDE INHOUD ===
+
+INFOGRAPHIC VEREISTEN:
+1. STRUCTUUR & LAYOUT:
+   - Centrale titel bovenaan met het hoofdonderwerp: "${onderwerp}"
+   - Verdeel de infographic in 4-6 duidelijke secties
+   - Gebruik een logische flow van boven naar beneden of van links naar rechts
+   - Maak een visuele hiërarchie: hoofdconcepten groot, details kleiner
+
+2. VISUELE ELEMENTEN (BELANGRIJK - maak deze rijk en gedetailleerd):
+   - Iconografie: Gebruik minimaal 8-12 relevante iconen die concepten verbeelden
+   - Diagrammen: Voeg minstens 1-2 flowcharts, mindmaps of procesdiagrammen toe
+   - Illustraties: Kleine tekeningen die kernbegrippen uitbeelden
+   - Pijlen en verbindingslijnen om relaties tussen concepten te tonen
+
+3. DATA VISUALISATIE:
+   - Als er getallen/statistieken in de tekst staan: maak grafieken, taartdiagrammen of staafdiagrammen
+   - Gebruik percentages, cijfers en feiten prominent in het ontwerp
+   - Timeline als er een chronologisch aspect is
+
+4. TEKSTUELE ELEMENTEN:
+   - Korte, puntige teksten (max 5-7 woorden per tekstblok)
+   - Highlight boxes voor kernbegrippen met definities
+   - Bullet points voor lijsten
+   - Citaten of belangrijke uitspraken in kaders
+
+5. KLEURENSCHEMA:
+   - Gebruik een harmonieus palet van 3-4 kleuren
+   - Educatieve tinten: diepe blauwtinten, warme groen, of professioneel paars/oranje
+   - Witte ruimte voor leesbaarheid
+   - Contrasterende kleuren voor nadruk
+
+6. STIJL:
+   - Modern, strak infographic design zoals je zou zien in een professioneel lesboek
+   - Hoge kwaliteit, geschikt voor afdrukken op A3 formaat
+   - Geen watermerken of logo's
+   - Professioneel en educatief van uitstraling
+
+BELANGRIJK: Dit moet eruitzien als een premium educatieve poster die je in een klaslokaal zou ophangen. Maak het informatiedicht maar overzichtelijk en visueel aantrekkelijk.`;
+    } else {
+      selectedModel = IMAGE_MODEL;
+      imagePrompt = `Genereer een professionele, educatieve foto of illustratie voor een lesboek hoofdstuk over "${onderwerp}".
+
+De afbeelding moet het volgende tonen: ${prompt}
+
+Stijlvereisten:
+- Fotorealistisch of hoogwaardige illustratie
+- Geschikt voor educatief materiaal
+- Helder, goed belicht, professionele uitstraling
+- Geen tekst overlays of watermerken
+- Boeiend en relevant voor het onderwerp`;
+    }
+
+    // Use 1:1 aspect ratio for infographics (poster format), 16:9 for regular images
+    const aspectRatio = isInfographic ? '1:1' : '16:9';
 
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
@@ -44,7 +112,7 @@ Style requirements:
         'X-Title': 'Handboek Generator',
       },
       body: JSON.stringify({
-        model: MODEL,
+        model: selectedModel,
         messages: [
           {
             role: 'user',
@@ -53,7 +121,7 @@ Style requirements:
         ],
         modalities: ['image', 'text'],
         image_config: {
-          aspect_ratio: '16:9',
+          aspect_ratio: aspectRatio,
         },
       }),
     });

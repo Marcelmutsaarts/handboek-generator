@@ -72,7 +72,7 @@ export default function Home() {
                 if (formData.afbeeldingType === 'stock') {
                   fetchStockImages(fullContent);
                 } else if (formData.afbeeldingType === 'ai') {
-                  fetchAiImages(fullContent, formData.onderwerp);
+                  fetchAiImages(fullContent, formData.onderwerp, formData.laatstePlaatjeInfographic);
                 }
               }
             } catch {
@@ -121,14 +121,14 @@ export default function Home() {
     }
   };
 
-  const fetchAiImages = async (generatedContent: string, onderwerp: string) => {
+  const fetchAiImages = async (generatedContent: string, onderwerp: string, withInfographic: boolean) => {
     const searchTerms = extractImageTerms(generatedContent);
-    if (searchTerms.length === 0) return;
+    if (searchTerms.length === 0 && !withInfographic) return;
 
     setIsLoadingImages(true);
     const generatedImages: ChapterImage[] = [];
 
-    // Generate images one by one
+    // Generate regular images first
     for (const term of searchTerms) {
       try {
         const response = await fetch('/api/generate-image', {
@@ -152,6 +152,45 @@ export default function Home() {
       } catch (err) {
         console.error('Error generating AI image:', err);
       }
+    }
+
+    // Generate infographic as last image if requested
+    if (withInfographic) {
+      console.log('=== Generating Infographic ===');
+      console.log('Content length:', generatedContent.length);
+      try {
+        const response = await fetch('/api/generate-image', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            prompt: 'Infographic samenvatting',
+            onderwerp,
+            isInfographic: true,
+            chapterContent: generatedContent,
+          }),
+        });
+
+        console.log('Infographic response status:', response.status);
+        if (response.ok) {
+          const data = await response.json();
+          console.log('Infographic data:', data);
+          if (data.imageUrl) {
+            generatedImages.push({
+              url: data.imageUrl,
+              alt: `Infographic: ${onderwerp}`,
+              isAiGenerated: true,
+            });
+            setImages([...generatedImages]);
+          }
+        } else {
+          const errorText = await response.text();
+          console.error('Infographic generation failed:', errorText);
+        }
+      } catch (err) {
+        console.error('Error generating infographic:', err);
+      }
+    } else {
+      console.log('Infographic not requested (withInfographic:', withInfographic, ')');
     }
 
     setIsLoadingImages(false);

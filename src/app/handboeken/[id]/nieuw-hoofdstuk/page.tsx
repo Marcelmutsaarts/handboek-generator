@@ -41,6 +41,7 @@ export default function NieuwHoofdstukPage() {
   const [lengte, setLengte] = useState<Lengte>('medium');
   const [woordenAantal, setWoordenAantal] = useState(WOORDEN_PER_LENGTE.medium);
   const [afbeeldingType, setAfbeeldingType] = useState<AfbeeldingType>('stock');
+  const [laatstePlaatjeInfographic, setLaatstePlaatjeInfographic] = useState(false);
 
   // Bepaal of slider afwijkt van preset
   const isCustomWoorden = woordenAantal !== WOORDEN_PER_LENGTE[lengte];
@@ -155,13 +156,14 @@ export default function NieuwHoofdstukPage() {
     }
   };
 
-  const fetchAiImages = async (generatedContent: string, onderwerp: string) => {
+  const fetchAiImages = async (generatedContent: string, onderwerp: string, withInfographic: boolean) => {
     const searchTerms = extractImageTerms(generatedContent);
-    if (searchTerms.length === 0) return;
+    if (searchTerms.length === 0 && !withInfographic) return;
 
     setIsLoadingImages(true);
     const generatedImages: ChapterImage[] = [];
 
+    // Generate regular images first
     for (const term of searchTerms) {
       try {
         const response = await fetch('/api/generate-image', {
@@ -183,6 +185,36 @@ export default function NieuwHoofdstukPage() {
         }
       } catch (err) {
         console.error('Error generating AI image:', err);
+      }
+    }
+
+    // Generate infographic as last image if requested
+    if (withInfographic) {
+      try {
+        const response = await fetch('/api/generate-image', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            prompt: 'Infographic samenvatting',
+            onderwerp,
+            isInfographic: true,
+            chapterContent: generatedContent,
+          }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.imageUrl) {
+            generatedImages.push({
+              url: data.imageUrl,
+              alt: `Infographic: ${onderwerp}`,
+              isAiGenerated: true,
+            });
+            setImages([...generatedImages]);
+          }
+        }
+      } catch (err) {
+        console.error('Error generating infographic:', err);
       }
     }
 
@@ -273,7 +305,7 @@ export default function NieuwHoofdstukPage() {
                 if (afbeeldingType === 'stock') {
                   fetchStockImages(fullContent);
                 } else if (afbeeldingType === 'ai') {
-                  fetchAiImages(fullContent, onderwerp);
+                  fetchAiImages(fullContent, onderwerp, laatstePlaatjeInfographic);
                 }
               }
             } catch {
@@ -636,6 +668,25 @@ export default function NieuwHoofdstukPage() {
                     </button>
                   ))}
                 </div>
+                {afbeeldingType === 'ai' && (
+                  <label className="flex items-start gap-3 mt-4 p-4 bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-lg cursor-pointer hover:border-purple-300 transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={laatstePlaatjeInfographic}
+                      onChange={(e) => setLaatstePlaatjeInfographic(e.target.checked)}
+                      className="mt-0.5 h-5 w-5 rounded border-gray-300 text-primary focus:ring-primary"
+                    />
+                    <div className="flex-1">
+                      <span className="font-medium text-foreground flex items-center gap-2">
+                        <span className="text-lg">📊</span>
+                        Laatste afbeelding als infographic
+                      </span>
+                      <span className="block text-xs text-secondary mt-1">
+                        Genereer een gedetailleerde infographic die de kernconcepten van het hoofdstuk visueel samenvat.
+                      </span>
+                    </div>
+                  </label>
+                )}
               </div>
 
               {/* Submit */}

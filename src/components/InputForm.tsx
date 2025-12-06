@@ -40,6 +40,7 @@ export default function InputForm({ onSubmit, isLoading }: InputFormProps) {
     woordenAantal: WOORDEN_PER_LENGTE.medium,
     metAfbeeldingen: true,
     afbeeldingType: 'stock',
+    laatstePlaatjeInfographic: false,
     context: '',
     template: 'klassiek',
     customSecties: [],
@@ -272,9 +273,34 @@ export default function InputForm({ onSubmit, isLoading }: InputFormProps) {
           ))}
         </div>
         {formData.afbeeldingType === 'ai' && (
-          <p className="text-xs text-secondary mt-2">
-            AI-gegenereerde afbeeldingen zijn beter afgestemd op de inhoud, maar genereren duurt langer.
-          </p>
+          <>
+            <p className="text-xs text-secondary mt-2">
+              AI-gegenereerde afbeeldingen zijn beter afgestemd op de inhoud, maar genereren duurt langer.
+            </p>
+            {/* Infographic optie */}
+            <label className="flex items-start gap-3 mt-4 p-4 bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-lg cursor-pointer hover:border-purple-300 transition-colors">
+              <input
+                type="checkbox"
+                checked={formData.laatstePlaatjeInfographic}
+                onChange={(e) => setFormData({
+                  ...formData,
+                  laatstePlaatjeInfographic: e.target.checked
+                })}
+                disabled={isLoading}
+                className="mt-0.5 h-5 w-5 rounded border-gray-300 text-primary focus:ring-primary"
+              />
+              <div className="flex-1">
+                <span className="font-medium text-foreground flex items-center gap-2">
+                  <span className="text-lg">📊</span>
+                  Laatste afbeelding als infographic
+                </span>
+                <span className="block text-xs text-secondary mt-1">
+                  Genereer een gedetailleerde infographic die de kernconcepten van het hoofdstuk visueel samenvat.
+                  Perfect als afsluiting of samenvatting.
+                </span>
+              </div>
+            </label>
+          </>
         )}
       </div>
 

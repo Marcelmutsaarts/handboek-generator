@@ -42,6 +42,7 @@ export async function POST(request: NextRequest) {
       woordenAantal: body.woordenAantal || 1500,
       metAfbeeldingen: body.metAfbeeldingen ?? true,
       afbeeldingType: body.afbeeldingType as FormData['afbeeldingType'] || 'stock',
+      laatstePlaatjeInfographic: false,
       context: body.context || '',
       template: body.template as FormData['template'] || 'klassiek',
       customSecties: body.customSecties,
