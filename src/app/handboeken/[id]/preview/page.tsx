@@ -70,11 +70,17 @@ export default function HandboekPreviewPage() {
         // Fetch afbeeldingen
         if (hoofdstukkenData.length > 0) {
           const hoofdstukIds = hoofdstukkenData.map((h) => h.id);
-          const { data: afbeeldingenData } = await supabase
+          console.log('Fetching afbeeldingen voor hoofdstukken:', hoofdstukIds);
+          const { data: afbeeldingenData, error: afbeeldingenError } = await supabase
             .from('afbeeldingen')
             .select('*')
             .in('hoofdstuk_id', hoofdstukIds)
             .order('volgorde', { ascending: true });
+
+          if (afbeeldingenError) {
+            console.error('Error fetching afbeeldingen:', afbeeldingenError);
+          }
+          console.log('Afbeeldingen gevonden:', afbeeldingenData?.length || 0, afbeeldingenData);
 
           if (afbeeldingenData) {
             const grouped: Record<string, Afbeelding[]> = {};
@@ -84,6 +90,7 @@ export default function HandboekPreviewPage() {
               }
               grouped[afb.hoofdstuk_id].push(afb);
             });
+            console.log('Grouped afbeeldingen:', grouped);
             setAfbeeldingenPerHoofdstuk(grouped);
           }
         }
