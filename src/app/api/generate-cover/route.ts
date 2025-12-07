@@ -89,14 +89,26 @@ Maak een cover die leerlingen en docenten aanspreekt en het onderwerp visueel sa
     const data = await response.json();
     const message = data.choices?.[0]?.message;
 
-    // Check for images in the response
+    // Try various shapes OpenRouter/Gemini may return
+    let imageUrl: string | undefined;
+
+    // 1) Legacy: message.images[0].image_url.url
     if (message?.images && Array.isArray(message.images) && message.images.length > 0) {
-      const imageData = message.images[0];
-      if (imageData.image_url?.url) {
-        return NextResponse.json({
-          coverUrl: imageData.image_url.url,
-        });
+      imageUrl = message.images[0]?.image_url?.url;
+    }
+
+    // 2) Newer: message.content array with image_url
+    if (!imageUrl && Array.isArray(message?.content)) {
+      for (const part of message.content) {
+        if (part?.image_url?.url) {
+          imageUrl = part.image_url.url;
+          break;
+        }
       }
+    }
+
+    if (imageUrl) {
+      return NextResponse.json({ coverUrl: imageUrl });
     }
 
     console.error('No cover image in response:', JSON.stringify(data, null, 2));
