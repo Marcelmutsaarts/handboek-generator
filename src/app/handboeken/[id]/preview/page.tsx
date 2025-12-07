@@ -136,7 +136,12 @@ export default function HandboekPreviewPage() {
                     alt={image.alt || ''}
                     className="max-w-full rounded-lg"
                   />
-                  <figcaption className="text-xs text-gray-500 mt-2">
+                  {image.caption && (
+                    <figcaption className="text-sm text-gray-800 mt-2 italic border-l-2 border-blue-500 pl-3">
+                      {image.caption}
+                    </figcaption>
+                  )}
+                  <figcaption className="text-xs text-gray-500 mt-1">
                     {image.is_ai_generated
                       ? 'AI-gegenereerde afbeelding'
                       : `Foto: ${image.photographer}`}
@@ -208,6 +213,15 @@ export default function HandboekPreviewPage() {
         {/* Cover page */}
         <div className="cover-page">
           <div className="cover-content">
+            {handboek.cover_url && (
+              <div className="cover-image-wrapper">
+                <img
+                  src={handboek.cover_url}
+                  alt={`Cover van ${handboek.titel}`}
+                  className="cover-image"
+                />
+              </div>
+            )}
             <h1 className="cover-title">{handboek.titel}</h1>
             {handboek.beschrijving && (
               <p className="cover-description">{handboek.beschrijving}</p>
@@ -264,6 +278,18 @@ export default function HandboekPreviewPage() {
           padding: 4rem 2rem;
           border-bottom: 2px solid #e5e7eb;
           margin-bottom: 3rem;
+        }
+
+        .cover-image-wrapper {
+          margin-bottom: 2rem;
+        }
+
+        .cover-image {
+          max-width: 280px;
+          max-height: 380px;
+          object-fit: cover;
+          border-radius: 0.5rem;
+          box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2);
         }
 
         .cover-title {
@@ -422,6 +448,11 @@ export default function HandboekPreviewPage() {
             page-break-after: always;
             border-bottom: none;
             margin-bottom: 0;
+          }
+
+          .cover-image {
+            max-width: 200px;
+            max-height: 280px;
           }
 
           .cover-title {

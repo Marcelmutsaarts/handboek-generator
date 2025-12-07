@@ -160,6 +160,32 @@ export default function NieuwHoofdstukPage() {
     }
   };
 
+  const generateCaption = async (imageUrl: string, imageDescription: string, onderwerp: string): Promise<string | undefined> => {
+    try {
+      const response = await fetch('/api/generate-caption', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getApiKeyHeader(),
+        },
+        body: JSON.stringify({
+          imageUrl,
+          onderwerp,
+          imageDescription,
+          niveau: handboek?.niveau,
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        return data.caption;
+      }
+    } catch (err) {
+      console.error('Error generating caption:', err);
+    }
+    return undefined;
+  };
+
   const fetchAiImages = async (generatedContent: string, onderwerp: string, withInfographic: boolean) => {
     const searchTerms = extractImageTerms(generatedContent);
     if (searchTerms.length === 0 && !withInfographic) return;
@@ -182,9 +208,12 @@ export default function NieuwHoofdstukPage() {
         if (response.ok) {
           const data = await response.json();
           if (data.imageUrl) {
+            // Generate caption for this image
+            const caption = await generateCaption(data.imageUrl, term, onderwerp);
             generatedImages.push({
               url: data.imageUrl,
               alt: data.alt || term,
+              caption,
               isAiGenerated: true,
             });
             setImages([...generatedImages]);
@@ -215,9 +244,12 @@ export default function NieuwHoofdstukPage() {
         if (response.ok) {
           const data = await response.json();
           if (data.imageUrl) {
+            // Generate caption for infographic
+            const caption = await generateCaption(data.imageUrl, `Infographic samenvatting van ${onderwerp}`, onderwerp);
             generatedImages.push({
               url: data.imageUrl,
               alt: `Infographic: ${onderwerp}`,
+              caption,
               isAiGenerated: true,
             });
             setImages([...generatedImages]);
@@ -388,6 +420,7 @@ export default function NieuwHoofdstukPage() {
         hoofdstuk_id: hoofdstukData.id,
         url: img.url,
         alt: img.alt || null,
+        caption: img.caption || null,
         photographer: img.photographer || null,
         photographer_url: img.photographerUrl || null,
         is_ai_generated: img.isAiGenerated || false,

@@ -29,8 +29,16 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  // Refresh session if expired
-  await supabase.auth.getUser();
+  // Refresh session if expired - with timeout to prevent hanging
+  try {
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Auth timeout')), 5000)
+    );
+    await Promise.race([supabase.auth.getUser(), timeoutPromise]);
+  } catch (error) {
+    // If auth check fails or times out, just continue without blocking
+    console.warn('Middleware auth check failed:', error);
+  }
 
   return supabaseResponse;
 }

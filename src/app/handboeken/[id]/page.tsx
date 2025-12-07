@@ -10,6 +10,7 @@ import { createClient } from '@/lib/supabase/client';
 import { Handboek, Hoofdstuk, Afbeelding, getTemplate, HoofdstukPlan } from '@/types';
 import { exportHandboekAsWord, exportHandboekAsHTML, exportHandboekAsMarkdown } from '@/lib/export';
 import StructureEditor from '@/components/StructureEditor';
+import { getApiKeyHeader } from '@/hooks/useApiKey';
 
 const NIVEAU_LABELS: Record<string, string> = {
   vmbo: 'VMBO',
@@ -35,6 +36,7 @@ export default function HandboekDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [showStructure, setShowStructure] = useState(false);
   const [showFullDescription, setShowFullDescription] = useState(false);
+  const [isGeneratingCover, setIsGeneratingCover] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -197,6 +199,54 @@ export default function HandboekDetailPage() {
     }
   };
 
+  const handleGenerateCover = async () => {
+    if (!handboek) return;
+    setIsGeneratingCover(true);
+    setError(null);
+
+    try {
+      const response = await fetch('/api/generate-cover', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getApiKeyHeader(),
+        },
+        body: JSON.stringify({
+          titel: handboek.titel,
+          beschrijving: handboek.beschrijving,
+          niveau: NIVEAU_LABELS[handboek.niveau] || handboek.niveau,
+          context: handboek.context,
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Cover generatie mislukt');
+      }
+
+      const { coverUrl } = await response.json();
+
+      // Opslaan in database
+      const supabase = createClient();
+      const { error: updateError } = await supabase
+        .from('handboeken')
+        .update({ cover_url: coverUrl })
+        .eq('id', handboekId);
+
+      if (updateError) {
+        console.error('Error saving cover:', updateError);
+        setError('Kon cover niet opslaan');
+      } else {
+        setHandboek({ ...handboek, cover_url: coverUrl });
+      }
+    } catch (err) {
+      console.error('Cover generation error:', err);
+      setError(err instanceof Error ? err.message : 'Cover generatie mislukt');
+    }
+
+    setIsGeneratingCover(false);
+  };
+
   if (authLoading || isLoading) {
     return (
       <div className="min-h-screen bg-background">
@@ -242,8 +292,49 @@ export default function HandboekDetailPage() {
 
         {/* Handboek header */}
         <div className="bg-white rounded-xl p-6 border border-border mb-6">
-          <div className="flex items-start justify-between">
-            <div>
+          <div className="flex gap-6">
+            {/* Cover afbeelding */}
+            <div className="flex-shrink-0">
+              {handboek.cover_url ? (
+                <div className="relative group">
+                  <img
+                    src={handboek.cover_url}
+                    alt={`Cover van ${handboek.titel}`}
+                    className="w-32 h-44 object-cover rounded-lg shadow-md"
+                  />
+                  <button
+                    onClick={handleGenerateCover}
+                    disabled={isGeneratingCover}
+                    className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center"
+                  >
+                    <span className="text-white text-xs">Opnieuw genereren</span>
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={handleGenerateCover}
+                  disabled={isGeneratingCover}
+                  className="w-32 h-44 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center gap-2 hover:border-primary hover:bg-accent/50 transition-colors"
+                >
+                  {isGeneratingCover ? (
+                    <>
+                      <div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full"></div>
+                      <span className="text-xs text-secondary">Genereren...</span>
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      <span className="text-xs text-secondary text-center px-2">Genereer kaft</span>
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
+
+            {/* Handboek info */}
+            <div className="flex-1">
               <h1 className="text-2xl font-bold text-foreground mb-2">{handboek.titel}</h1>
               {handboek.beschrijving && (
                 <div className="mb-4">
@@ -291,22 +382,22 @@ export default function HandboekDetailPage() {
                   </span>
                 )}
               </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <ShareHandboek
-                handboekId={handboekId}
-                isPubliek={handboek.is_publiek}
-                publiekeSlug={handboek.publieke_slug}
-                onUpdate={(isPubliek, slug) => {
-                  setHandboek({ ...handboek, is_publiek: isPubliek, publieke_slug: slug });
-                }}
-              />
-              <button
-                onClick={handleDeleteHandboek}
-                className="text-red-600 hover:text-red-700 text-sm"
-              >
-                Verwijderen
-              </button>
+              <div className="flex items-center gap-3 mt-4">
+                <ShareHandboek
+                  handboekId={handboekId}
+                  isPubliek={handboek.is_publiek}
+                  publiekeSlug={handboek.publieke_slug}
+                  onUpdate={(isPubliek, slug) => {
+                    setHandboek({ ...handboek, is_publiek: isPubliek, publieke_slug: slug });
+                  }}
+                />
+                <button
+                  onClick={handleDeleteHandboek}
+                  className="text-red-600 hover:text-red-700 text-sm"
+                >
+                  Verwijderen
+                </button>
+              </div>
             </div>
           </div>
 

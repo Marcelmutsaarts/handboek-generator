@@ -133,6 +133,7 @@ export interface GeneratedChapter {
 export interface ChapterImage {
   url: string;
   alt: string;
+  caption?: string; // AI-gegenereerde titel/toelichting
   photographer?: string;
   photographerUrl?: string;
   isAiGenerated?: boolean;
@@ -181,6 +182,7 @@ export interface Handboek {
   structuur: HandboekStructuur | null; // Geplande hoofdstukindeling
   is_publiek: boolean;
   publieke_slug: string | null;
+  cover_url: string | null; // AI-gegenereerde boekkaft
   created_at: string;
   updated_at: string;
 }
@@ -204,6 +206,7 @@ export interface Afbeelding {
   hoofdstuk_id: string;
   url: string;
   alt: string | null;
+  caption: string | null; // AI-gegenereerde titel/toelichting
   photographer: string | null;
   photographer_url: string | null;
   is_ai_generated: boolean;

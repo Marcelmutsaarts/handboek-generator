@@ -50,7 +50,12 @@ export default function ChapterDisplay({
                 alt={image.alt}
                 className="w-full max-w-2xl rounded-lg shadow-md"
               />
-              <figcaption className="text-xs text-secondary mt-2">
+              {image.caption && (
+                <figcaption className="text-sm text-foreground mt-2 italic border-l-2 border-primary pl-3">
+                  {image.caption}
+                </figcaption>
+              )}
+              <figcaption className="text-xs text-secondary mt-1">
                 {image.isAiGenerated ? (
                   'AI-gegenereerde afbeelding via Gemini'
                 ) : (
@@ -137,13 +142,14 @@ export default function ChapterDisplay({
         const image = images[imageIndex];
         imageIndex++;
         if (image) {
-          const caption = image.isAiGenerated
+          const sourceCaption = image.isAiGenerated
             ? 'AI-gegenereerde afbeelding via Gemini'
             : `Foto door ${image.photographer} via Pexels`;
           bodyContent += `
 <figure>
   <img src="${image.url}" alt="${image.alt}">
-  <figcaption>${caption}</figcaption>
+  ${image.caption ? `<figcaption class="image-caption">${image.caption}</figcaption>` : ''}
+  <figcaption class="source-caption">${sourceCaption}</figcaption>
 </figure>`;
         }
       }
@@ -162,7 +168,9 @@ export default function ChapterDisplay({
     ul, ol { padding-left: 1.5rem; }
     li { margin-bottom: 0.5rem; }
     img { max-width: 100%; border-radius: 0.5rem; margin: 1rem 0; }
-    figcaption { font-size: 0.75rem; color: #64748b; }
+    figure { margin: 1.5rem 0; }
+    .image-caption { font-size: 0.875rem; color: #1e293b; font-style: italic; border-left: 2px solid #3b82f6; padding-left: 0.75rem; margin-top: 0.5rem; }
+    .source-caption { font-size: 0.75rem; color: #64748b; margin-top: 0.25rem; }
   </style>
 </head>
 <body>
@@ -310,15 +318,31 @@ ${bodyContent}
               })
             );
 
-            // Add caption
-            const caption = image.isAiGenerated
+            // Add image caption if available
+            if (image.caption) {
+              docElements.push(
+                new Paragraph({
+                  children: [
+                    new TextRun({
+                      text: image.caption,
+                      size: 22,
+                      italics: true,
+                    }),
+                  ],
+                  spacing: { before: 50, after: 50 },
+                })
+              );
+            }
+
+            // Add source caption
+            const sourceCaption = image.isAiGenerated
               ? 'AI-gegenereerde afbeelding via Gemini'
               : `Foto door ${image.photographer} via Pexels`;
             docElements.push(
               new Paragraph({
                 children: [
                   new TextRun({
-                    text: caption,
+                    text: sourceCaption,
                     size: 18,
                     italics: true,
                     color: '666666',

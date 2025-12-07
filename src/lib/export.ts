@@ -84,6 +84,7 @@ export const parseMarkdown = (text: string): string => {
 interface ChapterImage {
   url: string;
   alt: string;
+  caption?: string;
   photographer?: string;
   isAiGenerated?: boolean;
 }
@@ -177,14 +178,31 @@ export const processContentForWord = async (
             })
           );
 
-          const caption = image.isAiGenerated
+          // Add image caption if available
+          if (image.caption) {
+            docElements.push(
+              new Paragraph({
+                children: [
+                  new TextRun({
+                    text: image.caption,
+                    size: 22,
+                    italics: true,
+                  }),
+                ],
+                spacing: { before: 50, after: 50 },
+              })
+            );
+          }
+
+          // Add source caption
+          const sourceCaption = image.isAiGenerated
             ? 'AI-gegenereerde afbeelding via Gemini'
             : `Foto door ${image.photographer} via Pexels`;
           docElements.push(
             new Paragraph({
               children: [
                 new TextRun({
-                  text: caption,
+                  text: sourceCaption,
                   size: 18,
                   italics: true,
                   color: '666666',
@@ -218,6 +236,26 @@ export const exportHandboekAsWord = async (
 ): Promise<void> => {
   const allElements: Paragraph[] = [];
 
+  // Cover image if available
+  if (handboek.cover_url) {
+    const coverBuffer = await fetchImageAsBuffer(handboek.cover_url);
+    if (coverBuffer) {
+      allElements.push(
+        new Paragraph({
+          children: [
+            new ImageRun({
+              data: coverBuffer,
+              transformation: { width: 300, height: 400 },
+              type: 'png',
+            }),
+          ],
+          spacing: { before: 1000, after: 400 },
+          alignment: 'center' as const,
+        })
+      );
+    }
+  }
+
   // Title page
   allElements.push(
     new Paragraph({
@@ -228,7 +266,7 @@ export const exportHandboekAsWord = async (
           size: 56,
         }),
       ],
-      spacing: { before: 2000, after: 400 },
+      spacing: { before: handboek.cover_url ? 400 : 2000, after: 400 },
     })
   );
 
@@ -335,6 +373,7 @@ export const exportHandboekAsWord = async (
     const chapterImages: ChapterImage[] = afbeeldingen.map((afb) => ({
       url: afb.url,
       alt: afb.alt || '',
+      caption: afb.caption || undefined,
       photographer: afb.photographer || undefined,
       isAiGenerated: afb.is_ai_generated,
     }));
@@ -382,8 +421,9 @@ export const exportHandboekAsHTML = (
 ): void => {
   let bodyContent = '';
 
-  // Title
+  // Title with optional cover
   bodyContent += `<header style="text-align: center; margin-bottom: 3rem; padding-bottom: 2rem; border-bottom: 2px solid #e2e8f0;">
+    ${handboek.cover_url ? `<img src="${handboek.cover_url}" alt="Cover" style="max-width: 280px; max-height: 380px; object-fit: cover; border-radius: 0.5rem; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2); margin-bottom: 2rem;">` : ''}
     <h1 style="font-size: 2.5rem; margin-bottom: 0.5rem;">${handboek.titel}</h1>
     ${handboek.beschrijving ? `<p style="color: #64748b; font-size: 1.1rem;">${handboek.beschrijving}</p>` : ''}
     <p style="color: #94a3b8; font-size: 0.9rem;">
@@ -418,13 +458,14 @@ export const exportHandboekAsHTML = (
         const image = afbeeldingen[imageIndex];
         imageIndex++;
         if (image) {
-          const caption = image.is_ai_generated
+          const sourceCaption = image.is_ai_generated
             ? 'AI-gegenereerde afbeelding via Gemini'
             : `Foto door ${image.photographer} via Pexels`;
           bodyContent += `
 <figure style="margin: 1.5rem 0;">
   <img src="${image.url}" alt="${image.alt || ''}" style="max-width: 100%; border-radius: 0.5rem;">
-  <figcaption style="font-size: 0.75rem; color: #64748b; margin-top: 0.5rem;">${caption}</figcaption>
+  ${image.caption ? `<figcaption style="font-size: 0.875rem; color: #1e293b; font-style: italic; border-left: 2px solid #3b82f6; padding-left: 0.75rem; margin-top: 0.5rem;">${image.caption}</figcaption>` : ''}
+  <figcaption style="font-size: 0.75rem; color: #64748b; margin-top: 0.25rem;">${sourceCaption}</figcaption>
 </figure>`;
         }
       }
