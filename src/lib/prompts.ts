@@ -258,8 +258,14 @@ Verwerk dit SUBTIEL in de tekst:
   const afbeeldingenSection = metAfbeeldingen
     ? `
 ## AFBEELDINGEN
-Voeg NA elke inhoudelijke paragraaf (dus NA paragraaf 1, 2, 3 en NA praktische opdrachten) een afbeeldingsregel toe in dit EXACTE formaat:
+Voeg MAXIMAAL 4 afbeeldingen toe, verspreid over de belangrijkste secties. Gebruik dit EXACTE formaat:
 [AFBEELDING: engelse zoekterm]
+
+PLAATSING (kies maximaal 4 van deze locaties):
+- Na de eerste inhoudelijke paragraaf van de theorie
+- Bij een belangrijk voorbeeld of concept
+- Bij praktische opdrachten of stappen
+- Voor de samenvatting (alleen als relevant)
 
 BELANGRIJKE regels voor de zoekterm:
 - Exact 2-3 Engelse woorden
@@ -275,7 +281,7 @@ Voorbeelden per onderwerp:
 
 VERMIJD generieke termen zoals: education, learning, student, classroom, school, study, book, teacher (tenzij gecombineerd met iets specifieks)
 
-NIET plaatsen na: Inleiding, Reflectievragen, Samenvatting
+NIET plaatsen na: Inleiding, Reflectievragen, Samenvatting. NOOIT meer dan 4 afbeeldingen!
 `
     : '';
 
