@@ -56,7 +56,7 @@ export default function ShareHandboek({
 
       if (updateError) {
         console.error('Error making private:', updateError);
-        setError('Kon handboek niet privé maken');
+        setError(`Kon handboek niet privé maken: ${updateError.message}`);
       } else {
         onUpdate(false, null);
       }

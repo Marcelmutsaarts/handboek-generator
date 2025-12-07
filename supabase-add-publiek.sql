@@ -4,7 +4,8 @@
 -- Voeg kolommen toe voor publieke toegang
 ALTER TABLE handboeken
 ADD COLUMN IF NOT EXISTS is_publiek BOOLEAN DEFAULT FALSE,
-ADD COLUMN IF NOT EXISTS publieke_slug TEXT UNIQUE;
+ADD COLUMN IF NOT EXISTS publieke_slug TEXT UNIQUE,
+ADD COLUMN IF NOT EXISTS publieke_html TEXT; -- Pre-rendered HTML voor snelle publieke weergave
 
 -- Index voor snelle lookup op slug
 CREATE INDEX IF NOT EXISTS idx_handboeken_publieke_slug ON handboeken(publieke_slug) WHERE publieke_slug IS NOT NULL;
