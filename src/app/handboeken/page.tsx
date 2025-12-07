@@ -1,11 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Header from '@/components/Header';
-import { useAuth } from '@/hooks/useAuth';
-import { createClient } from '@/lib/supabase/client';
 import { Handboek } from '@/types';
 
 const NIVEAU_LABELS: Record<string, string> = {
@@ -17,54 +13,12 @@ const NIVEAU_LABELS: Record<string, string> = {
   uni: 'Universiteit',
 };
 
-export default function HandboekenPage() {
-  const { user, isLoading: authLoading } = useAuth();
-  const router = useRouter();
-  const [handboeken, setHandboeken] = useState<Handboek[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+interface HandboekenClientProps {
+  handboeken: Handboek[];
+  error: string | null;
+}
 
-  useEffect(() => {
-    if (!authLoading && !user) {
-      router.push('/login');
-    }
-  }, [user, authLoading, router]);
-
-  useEffect(() => {
-    const fetchHandboeken = async () => {
-      if (!user) return;
-
-      const supabase = createClient();
-      const { data, error } = await supabase
-        .from('handboeken')
-        .select('*')
-        .order('updated_at', { ascending: false });
-
-      if (error) {
-        console.error('Error fetching handboeken:', error);
-        setError('Kon handboeken niet laden');
-      } else {
-        setHandboeken(data || []);
-      }
-      setIsLoading(false);
-    };
-
-    if (user) {
-      fetchHandboeken();
-    }
-  }, [user]);
-
-  if (authLoading || (!user && !authLoading)) {
-    return (
-      <div className="min-h-screen bg-background">
-        <Header />
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div>
-        </div>
-      </div>
-    );
-  }
-
+export default function HandboekenClient({ handboeken, error }: HandboekenClientProps) {
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -93,12 +47,7 @@ export default function HandboekenPage() {
           </div>
         )}
 
-        {/* Loading state */}
-        {isLoading ? (
-          <div className="flex items-center justify-center h-64">
-            <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div>
-          </div>
-        ) : handboeken.length === 0 ? (
+        {handboeken.length === 0 ? (
           /* Empty state */
           <div className="bg-white rounded-xl p-12 border border-border text-center">
             <div className="w-16 h-16 bg-accent rounded-full flex items-center justify-center mx-auto mb-4">

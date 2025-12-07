@@ -4,14 +4,8 @@ import { createClient } from '@/lib/supabase/client';
 import { User } from '@supabase/supabase-js';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuthContext } from '@/components/AuthProvider';
 
 export function useAuth() {
-  const context = useAuthContext();
-  if (context) {
-    return context;
-  }
-
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
