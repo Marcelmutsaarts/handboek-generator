@@ -491,6 +491,317 @@ export const exportHandboekAsWord = async (
   saveAs(buffer, filename);
 };
 
+// Generate static HTML for public sharing (returns HTML string)
+export const generatePublicHTML = (
+  handboek: Handboek,
+  hoofdstukken: Hoofdstuk[],
+  afbeeldingenPerHoofdstuk: Record<string, Afbeelding[]>
+): string => {
+  let bodyContent = '';
+
+  // Full-page cover or fallback title page
+  if (handboek.cover_url) {
+    bodyContent += `<div class="cover-page">
+      <img src="${handboek.cover_url}" alt="Cover" class="cover-image">
+      <div class="cover-overlay">
+        <h1 class="cover-title">${escapeHtml(handboek.titel)}</h1>
+        ${handboek.beschrijving ? `<p class="cover-description">${escapeHtml(handboek.beschrijving)}</p>` : ''}
+        <p class="cover-meta">
+          ${NIVEAU_LABELS[handboek.niveau] || handboek.niveau} - Leerjaar ${handboek.leerjaar}
+          ${handboek.context ? `<br><em>${escapeHtml(handboek.context)}</em>` : ''}
+        </p>
+      </div>
+    </div>`;
+  } else {
+    bodyContent += `<header class="title-page">
+      <h1 class="title-main">${escapeHtml(handboek.titel)}</h1>
+      ${handboek.beschrijving ? `<p class="title-description">${escapeHtml(handboek.beschrijving)}</p>` : ''}
+      <p class="title-meta">
+        ${NIVEAU_LABELS[handboek.niveau] || handboek.niveau} - Leerjaar ${handboek.leerjaar}
+        ${handboek.context ? ` | ${escapeHtml(handboek.context)}` : ''}
+      </p>
+    </header>`;
+  }
+
+  // Content wrapper
+  bodyContent += `<div class="content-wrapper">`;
+
+  // Table of contents
+  if (hoofdstukken.length > 0) {
+    bodyContent += `<nav class="toc">
+      <h2>Inhoudsopgave</h2>
+      <ol>
+        ${hoofdstukken.map((h, i) => `<li><a href="#hoofdstuk-${i + 1}">${escapeHtml(h.titel)}</a></li>`).join('')}
+      </ol>
+    </nav>`;
+  }
+
+  // Chapters
+  hoofdstukken.forEach((hoofdstuk, index) => {
+    const afbeeldingen = afbeeldingenPerHoofdstuk[hoofdstuk.id] || [];
+
+    bodyContent += `<article id="hoofdstuk-${index + 1}" class="chapter">
+      <p class="chapter-number">Hoofdstuk ${index + 1}</p>`;
+
+    // Process content with images
+    const parts = hoofdstuk.content.split(/\[AFBEELDING:\s*([^\]]+)\]/g);
+    let imageIndex = 0;
+
+    for (let i = 0; i < parts.length; i++) {
+      if (i % 2 === 0) {
+        bodyContent += parseMarkdown(parts[i]);
+      } else {
+        const image = afbeeldingen[imageIndex];
+        imageIndex++;
+        if (image) {
+          const sourceCaption = image.is_ai_generated
+            ? 'AI-gegenereerde afbeelding'
+            : `Foto: ${image.photographer || 'Pexels'}`;
+          bodyContent += `
+<figure class="image-figure">
+  <img src="${image.url}" alt="${escapeHtml(image.alt || '')}" loading="lazy">
+  ${image.caption ? `<figcaption class="image-caption">${escapeHtml(image.caption)}</figcaption>` : ''}
+  <figcaption class="image-source">${sourceCaption}</figcaption>
+</figure>`;
+        }
+      }
+    }
+
+    bodyContent += '</article>';
+  });
+
+  // Close content wrapper
+  bodyContent += `</div>`;
+
+  // Footer
+  bodyContent += `<footer class="page-footer">
+    <p>Gemaakt met <a href="https://handboek-generator.vercel.app" target="_blank">Handboek Generator</a></p>
+  </footer>`;
+
+  return `<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${escapeHtml(handboek.titel)}</title>
+  <meta name="description" content="${escapeHtml(handboek.beschrijving || `Handboek over ${handboek.titel}`)}">
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: Georgia, 'Times New Roman', serif;
+      margin: 0;
+      padding: 0;
+      line-height: 1.8;
+      color: #1a1a1a;
+      background: #fff;
+    }
+
+    /* Cover page */
+    .cover-page {
+      position: relative;
+      width: 100%;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #1a1a2e;
+    }
+    .cover-image {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .cover-overlay {
+      position: relative;
+      z-index: 2;
+      text-align: center;
+      color: white;
+      padding: 2rem;
+      background: rgba(0, 0, 0, 0.5);
+      border-radius: 1rem;
+      max-width: 80%;
+    }
+    .cover-title {
+      font-size: 2.5rem;
+      font-weight: bold;
+      margin: 0 0 1rem 0;
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+    }
+    .cover-description {
+      font-size: 1.1rem;
+      margin: 0 0 1rem 0;
+    }
+    .cover-meta {
+      font-size: 1rem;
+      margin: 0;
+      opacity: 0.9;
+    }
+
+    /* Title page (no cover) */
+    .title-page {
+      min-height: 70vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      padding: 4rem 2rem;
+      border-bottom: 2px solid #e5e7eb;
+    }
+    .title-main {
+      font-size: 2.5rem;
+      margin: 0 0 1rem 0;
+      color: #111827;
+    }
+    .title-description {
+      font-size: 1.1rem;
+      color: #4b5563;
+      margin: 0 0 1rem 0;
+      max-width: 600px;
+    }
+    .title-meta {
+      font-size: 0.9rem;
+      color: #6b7280;
+      margin: 0;
+    }
+
+    /* Content */
+    .content-wrapper {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+
+    /* TOC */
+    .toc {
+      padding: 1.5rem;
+      background: #f8fafc;
+      border-radius: 0.5rem;
+      margin-bottom: 2rem;
+    }
+    .toc h2 {
+      font-size: 1.25rem;
+      margin: 0 0 1rem 0;
+      border: none;
+      padding: 0;
+    }
+    .toc ol {
+      margin: 0;
+      padding-left: 1.5rem;
+    }
+    .toc li {
+      margin-bottom: 0.5rem;
+    }
+    .toc a {
+      color: #2563eb;
+      text-decoration: none;
+    }
+    .toc a:hover {
+      text-decoration: underline;
+    }
+
+    /* Chapters */
+    .chapter {
+      margin-bottom: 3rem;
+      padding-top: 2rem;
+      border-top: 1px solid #e5e7eb;
+    }
+    .chapter-number {
+      font-size: 0.875rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #6b7280;
+      margin: 0 0 0.5rem 0;
+    }
+
+    h1 { font-size: 1.75rem; margin: 0 0 1rem 0; color: #111827; }
+    h2 { font-size: 1.375rem; margin: 2rem 0 0.75rem 0; color: #1f2937; border-bottom: 1px solid #e5e7eb; padding-bottom: 0.5rem; }
+    h3 { font-size: 1.125rem; margin: 1.5rem 0 0.5rem 0; color: #374151; }
+    p { margin: 0 0 1rem 0; }
+    ul, ol { margin: 1rem 0; padding-left: 2rem; }
+    li { margin-bottom: 0.5rem; }
+    strong { font-weight: 600; }
+    em { font-style: italic; }
+
+    /* Images */
+    .image-figure {
+      margin: 2rem 0;
+    }
+    .image-figure img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 0.5rem;
+      display: block;
+    }
+    .image-caption {
+      font-size: 0.875rem;
+      color: #1e293b;
+      font-style: italic;
+      border-left: 2px solid #3b82f6;
+      padding-left: 0.75rem;
+      margin-top: 0.5rem;
+    }
+    .image-source {
+      font-size: 0.75rem;
+      color: #6b7280;
+      margin-top: 0.25rem;
+    }
+
+    /* Footer */
+    .page-footer {
+      text-align: center;
+      padding: 2rem;
+      border-top: 1px solid #e5e7eb;
+      margin-top: 3rem;
+      font-size: 0.875rem;
+      color: #6b7280;
+    }
+    .page-footer a {
+      color: #2563eb;
+      text-decoration: none;
+    }
+
+    /* Print styles */
+    @media print {
+      .cover-page, .title-page {
+        height: 100vh;
+        page-break-after: always;
+      }
+      .toc { page-break-after: always; }
+      .chapter { page-break-before: always; }
+      .chapter:first-of-type { page-break-before: auto; }
+      .image-figure { page-break-inside: avoid; }
+      .page-footer { display: none; }
+      a { color: inherit; text-decoration: none; }
+    }
+
+    /* Responsive */
+    @media (max-width: 640px) {
+      .cover-title { font-size: 1.75rem; }
+      .title-main { font-size: 1.75rem; }
+      .content-wrapper { padding: 1rem; }
+    }
+  </style>
+</head>
+<body>
+${bodyContent}
+</body>
+</html>`;
+};
+
+// Helper to escape HTML
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 // Export complete handboek as HTML
 export const exportHandboekAsHTML = (
   handboek: Handboek,

@@ -384,9 +384,9 @@ export default function HandboekDetailPage() {
               </div>
               <div className="flex items-center gap-3 mt-4">
                 <ShareHandboek
-                  handboekId={handboekId}
-                  isPubliek={handboek.is_publiek}
-                  publiekeSlug={handboek.publieke_slug}
+                  handboek={handboek}
+                  hoofdstukken={hoofdstukken}
+                  afbeeldingenPerHoofdstuk={afbeeldingenPerHoofdstuk}
                   onUpdate={(isPubliek, slug) => {
                     setHandboek({ ...handboek, is_publiek: isPubliek, publieke_slug: slug });
                   }}

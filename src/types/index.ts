@@ -182,6 +182,7 @@ export interface Handboek {
   structuur: HandboekStructuur | null; // Geplande hoofdstukindeling
   is_publiek: boolean;
   publieke_slug: string | null;
+  publieke_html: string | null; // Pre-rendered HTML voor snelle publieke weergave
   cover_url: string | null; // AI-gegenereerde boekkaft
   created_at: string;
   updated_at: string;

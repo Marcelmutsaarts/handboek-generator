@@ -2,11 +2,13 @@
 
 import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { generatePublicHTML } from '@/lib/export';
+import { Handboek, Hoofdstuk, Afbeelding } from '@/types';
 
 interface ShareHandboekProps {
-  handboekId: string;
-  isPubliek: boolean;
-  publiekeSlug: string | null;
+  handboek: Handboek;
+  hoofdstukken: Hoofdstuk[];
+  afbeeldingenPerHoofdstuk: Record<string, Afbeelding[]>;
   onUpdate: (isPubliek: boolean, slug: string | null) => void;
 }
 
@@ -21,15 +23,19 @@ function generateSlug(): string {
 }
 
 export default function ShareHandboek({
-  handboekId,
-  isPubliek,
-  publiekeSlug,
+  handboek,
+  hoofdstukken,
+  afbeeldingenPerHoofdstuk,
   onUpdate,
 }: ShareHandboekProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const isPubliek = handboek.is_publiek;
+  const publiekeSlug = handboek.publieke_slug;
+  const handboekId = handboek.id;
 
   const publicUrl = publiekeSlug
     ? `${typeof window !== 'undefined' ? window.location.origin : ''}/publiek/${publiekeSlug}`
@@ -42,10 +48,10 @@ export default function ShareHandboek({
     const supabase = createClient();
 
     if (isPubliek) {
-      // Maak privé
+      // Maak privé - verwijder ook de HTML
       const { error: updateError } = await supabase
         .from('handboeken')
-        .update({ is_publiek: false, publieke_slug: null })
+        .update({ is_publiek: false, publieke_slug: null, publieke_html: null })
         .eq('id', handboekId);
 
       if (updateError) {
@@ -55,11 +61,19 @@ export default function ShareHandboek({
         onUpdate(false, null);
       }
     } else {
-      // Maak publiek met nieuwe slug
+      // Maak publiek met nieuwe slug en genereer statische HTML
       const newSlug = generateSlug();
+
+      // Genereer de statische HTML met alle content en afbeeldingen
+      const publicHtml = generatePublicHTML(handboek, hoofdstukken, afbeeldingenPerHoofdstuk);
+
       const { error: updateError } = await supabase
         .from('handboeken')
-        .update({ is_publiek: true, publieke_slug: newSlug })
+        .update({
+          is_publiek: true,
+          publieke_slug: newSlug,
+          publieke_html: publicHtml
+        })
         .eq('id', handboekId);
 
       if (updateError) {
@@ -69,7 +83,11 @@ export default function ShareHandboek({
           const retrySlug = generateSlug();
           const { error: retryError } = await supabase
             .from('handboeken')
-            .update({ is_publiek: true, publieke_slug: retrySlug })
+            .update({
+              is_publiek: true,
+              publieke_slug: retrySlug,
+              publieke_html: publicHtml
+            })
             .eq('id', handboekId);
 
           if (retryError) {
