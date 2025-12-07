@@ -258,14 +258,14 @@ Verwerk dit SUBTIEL in de tekst:
   const afbeeldingenSection = metAfbeeldingen
     ? `
 ## AFBEELDINGEN
-Voeg MAXIMAAL 4 afbeeldingen toe, verspreid over de belangrijkste secties. Gebruik dit EXACTE formaat:
+Voeg 4 afbeeldingen toe, GELIJKMATIG VERSPREID over het hele hoofdstuk. Gebruik dit EXACTE formaat:
 [AFBEELDING: engelse zoekterm]
 
-PLAATSING (kies maximaal 4 van deze locaties):
-- Na de eerste inhoudelijke paragraaf van de theorie
-- Bij een belangrijk voorbeeld of concept
-- Bij praktische opdrachten of stappen
-- Voor de samenvatting (alleen als relevant)
+VERSPREIDING:
+- Verdeel de 4 afbeeldingen evenredig over alle secties van het hoofdstuk
+- Plaats ze bij de inhoud waar ze het meest relevant zijn
+- NIET allemaal aan het begin of eind clusteren
+- Elke afbeelding moet passen bij de tekst die er direct aan voorafgaat
 
 BELANGRIJKE regels voor de zoekterm:
 - Exact 2-3 Engelse woorden
@@ -281,7 +281,7 @@ Voorbeelden per onderwerp:
 
 VERMIJD generieke termen zoals: education, learning, student, classroom, school, study, book, teacher (tenzij gecombineerd met iets specifieks)
 
-NIET plaatsen na: Inleiding, Reflectievragen, Samenvatting. NOOIT meer dan 4 afbeeldingen!
+NIET plaatsen direct na: titels, kopjes, Inleiding, Reflectievragen. Plaats EXACT 4 afbeeldingen, gelijkmatig verspreid!
 `
     : '';
 
