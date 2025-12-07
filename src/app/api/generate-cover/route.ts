@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const COVER_MODEL = 'google/gemini-2.0-flash-exp:free';
+const COVER_MODEL = 'google/gemini-3-pro-image-preview';
 
 function getApiKey(request: NextRequest): string | null {
   return request.headers.get('X-OpenRouter-Key');
