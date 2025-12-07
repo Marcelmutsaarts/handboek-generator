@@ -1,5 +1,4 @@
-
-'use client';
+﻿'use client';
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
@@ -195,7 +194,7 @@ export default function NieuwHoofdstukPage() {
     setIsLoadingImages(true);
     const generatedImages: ChapterImage[] = [];
 
-    // Generate regular images concurrently (capped)
+    // Generate regular images concurrently
     await Promise.allSettled(
       searchTerms.map(async (term) => {
         try {
@@ -298,9 +297,7 @@ export default function NieuwHoofdstukPage() {
       // Bereid eerdere hoofdstukken context voor
       const eerdereHoofdstukkenContext = eerdereHoofdstukken.map((h) => {
         // Extract samenvatting uit content (zoek naar ## Samenvatting sectie)
-        const samenvattingMatch = h.content.match(/## Samenvatting
-([\s\S]*?)(?=
-##|$)/);
+        const samenvattingMatch = h.content.match(/## Samenvatting\n([\\s\\S]*?)(?=\n##|$)/);
         const samenvatting = samenvattingMatch
           ? samenvattingMatch[1].trim().slice(0, 500) // Limit samenvatting lengte
           : undefined;
@@ -345,8 +342,7 @@ export default function NieuwHoofdstukPage() {
         if (done) break;
 
         const chunk = decoder.decode(value);
-        const lines = chunk.split('
-');
+        const lines = chunk.split('\n');
 
         for (const line of lines) {
           if (line.startsWith('data: ')) {
@@ -532,7 +528,7 @@ export default function NieuwHoofdstukPage() {
               </span>
               {handboek.template && (
                 <span className="px-2.5 py-1 bg-accent rounded-lg flex items-center gap-1.5">
-                  <span>{getTemplate(handboek.template)?.icon || '?Y""'}</span>
+                  <span>{getTemplate(handboek.template)?.icon || 'ĐY""'}</span>
                   <span>{getTemplate(handboek.template)?.naam || handboek.template}</span>
                 </span>
               )}
@@ -743,7 +739,7 @@ export default function NieuwHoofdstukPage() {
                     />
                     <div className="flex-1">
                       <span className="font-medium text-foreground flex items-center gap-2">
-                        <span className="text-lg">?Y"S</span>
+                        <span className="text-lg">ĐY"S</span>
                         Laatste afbeelding als infographic
                       </span>
                       <span className="block text-xs text-secondary mt-1">
@@ -755,13 +751,15 @@ export default function NieuwHoofdstukPage() {
               </div>
 
               {/* Submit */}
-              <button
-                type="submit"
-                disabled={!onderwerp.trim()}
-                className="w-full py-4 px-6 bg-primary text-white font-medium rounded-lg hover:bg-primary-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Genereer hoofdstuk
-              </button>
+              <div className="flex flex-col gap-3 pt-4">
+                <button
+                  type="submit"
+                  disabled={!onderwerp.trim()}
+                  className="w-full py-3 px-6 bg-primary text-white font-medium rounded-lg hover:bg-primary-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Genereer hoofdstuk
+                </button>
+              </div>
             </form>
           </div>
         )}
