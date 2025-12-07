@@ -19,10 +19,10 @@ export default function PubliekHandboekPage() {
 
       const supabase = createClient();
 
-      // Fetch alleen de publieke HTML - één simpele query
+      // Check of handboek publiek is
       const { data: handboekData, error: handboekError } = await supabase
         .from('handboeken')
-        .select('publieke_html, titel')
+        .select('id, titel')
         .eq('publieke_slug', slug)
         .eq('is_publiek', true)
         .single();
@@ -33,12 +33,19 @@ export default function PubliekHandboekPage() {
         return;
       }
 
-      if (handboekData.publieke_html) {
-        // Statische HTML beschikbaar - direct gebruiken
-        setHtmlContent(handboekData.publieke_html);
-      } else {
-        // Fallback: geen pre-rendered HTML beschikbaar
-        setError('Dit handboek is nog niet beschikbaar. Vraag de eigenaar om het opnieuw te delen.');
+      // Fetch HTML uit Supabase Storage
+      const storageUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/publiek-handboeken/${slug}.html`;
+
+      try {
+        const response = await fetch(storageUrl);
+        if (response.ok) {
+          const html = await response.text();
+          setHtmlContent(html);
+        } else {
+          setError('Dit handboek is nog niet beschikbaar. Vraag de eigenaar om het opnieuw te delen.');
+        }
+      } catch {
+        setError('Kon het handboek niet laden.');
       }
 
       setIsLoading(false);

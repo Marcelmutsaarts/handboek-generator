@@ -554,28 +554,15 @@ export const generatePublicHTML = (
         const image = afbeeldingen[imageIndex];
         imageIndex++;
         if (image) {
-          // Skip base64 images (too large) - only include URL-based images
-          const isBase64 = image.url.startsWith('data:');
-          if (!isBase64) {
-            const sourceCaption = image.is_ai_generated
-              ? 'AI-gegenereerde afbeelding'
-              : `Foto: ${image.photographer || 'Pexels'}`;
-            bodyContent += `
+          const sourceCaption = image.is_ai_generated
+            ? 'AI-gegenereerde afbeelding'
+            : `Foto: ${image.photographer || 'Pexels'}`;
+          bodyContent += `
 <figure class="image-figure">
   <img src="${image.url}" alt="${escapeHtml(image.alt || '')}" loading="lazy">
   ${image.caption ? `<figcaption class="image-caption">${escapeHtml(image.caption)}</figcaption>` : ''}
   <figcaption class="image-source">${sourceCaption}</figcaption>
 </figure>`;
-          } else {
-            // For base64 images, show a placeholder with caption
-            bodyContent += `
-<figure class="image-figure image-placeholder">
-  <div class="placeholder-box">
-    <p>Afbeelding: ${escapeHtml(image.alt || 'Illustratie')}</p>
-  </div>
-  ${image.caption ? `<figcaption class="image-caption">${escapeHtml(image.caption)}</figcaption>` : ''}
-</figure>`;
-          }
         }
       }
     }
@@ -618,6 +605,7 @@ export const generatePublicHTML = (
       align-items: center;
       justify-content: center;
       background: #1a1a2e;
+      overflow: hidden;
     }
     .cover-image {
       position: absolute;
@@ -626,6 +614,7 @@ export const generatePublicHTML = (
       width: 100%;
       height: 100%;
       object-fit: cover;
+      z-index: 1;
     }
     .cover-overlay {
       position: relative;
@@ -633,7 +622,7 @@ export const generatePublicHTML = (
       text-align: center;
       color: white;
       padding: 2rem;
-      background: rgba(0, 0, 0, 0.5);
+      background: rgba(0, 0, 0, 0.6);
       border-radius: 1rem;
       max-width: 80%;
     }

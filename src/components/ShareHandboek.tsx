@@ -48,10 +48,18 @@ export default function ShareHandboek({
     const supabase = createClient();
 
     if (isPubliek) {
-      // Maak privé - verwijder ook de HTML
+      // Maak privé - verwijder ook de HTML uit Storage
+      if (publiekeSlug) {
+        await fetch('/api/upload-public-html', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ slug: publiekeSlug }),
+        });
+      }
+
       const { error: updateError } = await supabase
         .from('handboeken')
-        .update({ is_publiek: false, publieke_slug: null, publieke_html: null })
+        .update({ is_publiek: false, publieke_slug: null })
         .eq('id', handboekId);
 
       if (updateError) {
@@ -61,18 +69,32 @@ export default function ShareHandboek({
         onUpdate(false, null);
       }
     } else {
-      // Maak publiek met nieuwe slug en genereer statische HTML
+      // Maak publiek met nieuwe slug en upload statische HTML naar Storage
       const newSlug = generateSlug();
 
       // Genereer de statische HTML met alle content en afbeeldingen
       const publicHtml = generatePublicHTML(handboek, hoofdstukken, afbeeldingenPerHoofdstuk);
 
+      // Upload naar Supabase Storage
+      const uploadResponse = await fetch('/api/upload-public-html', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ slug: newSlug, html: publicHtml }),
+      });
+
+      if (!uploadResponse.ok) {
+        const uploadData = await uploadResponse.json();
+        setError(uploadData.error || 'Kon HTML niet uploaden');
+        setIsLoading(false);
+        return;
+      }
+
+      // Update database met slug (geen HTML meer in database)
       const { error: updateError } = await supabase
         .from('handboeken')
         .update({
           is_publiek: true,
           publieke_slug: newSlug,
-          publieke_html: publicHtml
         })
         .eq('id', handboekId);
 
@@ -81,12 +103,19 @@ export default function ShareHandboek({
         // Probeer opnieuw met andere slug bij conflict
         if (updateError.code === '23505') {
           const retrySlug = generateSlug();
+
+          // Upload opnieuw met nieuwe slug
+          await fetch('/api/upload-public-html', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ slug: retrySlug, html: publicHtml }),
+          });
+
           const { error: retryError } = await supabase
             .from('handboeken')
             .update({
               is_publiek: true,
               publieke_slug: retrySlug,
-              publieke_html: publicHtml
             })
             .eq('id', handboekId);
 
