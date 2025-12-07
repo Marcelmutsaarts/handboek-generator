@@ -1,8 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Document, Packer, Paragraph, TextRun, HeadingLevel, ImageRun } from 'docx';
-import { saveAs } from 'file-saver';
+import type { Paragraph, TextRun } from 'docx';
 import { ChapterImage } from '@/types';
 
 interface ChapterDisplayProps {
@@ -197,14 +196,16 @@ ${bodyContent}
   };
 
   const handleExportWord = async () => {
+    const [{ Document, Packer, Paragraph, TextRun, HeadingLevel, ImageRun }, { saveAs }] = await Promise.all([
+      import('docx'),
+      import('file-saver'),
+    ]);
     const parts = content.split(/\[AFBEELDING:\s*([^\]]+)\]/g);
     let imageIndex = 0;
     const docElements: Paragraph[] = [];
 
-    // Helper to convert image URL to buffer
     const fetchImageAsBuffer = async (url: string): Promise<ArrayBuffer | null> => {
       try {
-        // For base64 data URLs
         if (url.startsWith('data:')) {
           const base64 = url.split(',')[1];
           const binaryString = atob(base64);
@@ -214,7 +215,6 @@ ${bodyContent}
           }
           return bytes.buffer;
         }
-        // For external URLs
         const response = await fetch(url);
         return await response.arrayBuffer();
       } catch (err) {
@@ -269,7 +269,7 @@ ${bodyContent}
             const text = trimmedLine.replace(/^\d+\.\s/, '');
             docElements.push(
               new Paragraph({
-                children: parseInlineFormatting(text),
+                children: parseInlineFormatting(text, TextRun),
                 numbering: { reference: 'numbered-list', level: 0 },
                 spacing: { before: 100, after: 100 },
               })
@@ -280,7 +280,7 @@ ${bodyContent}
             const text = trimmedLine.slice(2);
             docElements.push(
               new Paragraph({
-                children: parseInlineFormatting(text),
+                children: parseInlineFormatting(text, TextRun),
                 bullet: { level: 0 },
                 spacing: { before: 100, after: 100 },
               })
@@ -290,7 +290,7 @@ ${bodyContent}
           else {
             docElements.push(
               new Paragraph({
-                children: parseInlineFormatting(trimmedLine),
+                children: parseInlineFormatting(trimmedLine, TextRun),
                 spacing: { before: 100, after: 100 },
               })
             );
@@ -386,7 +386,7 @@ ${bodyContent}
   };
 
   // Helper function to parse bold and italic in text
-  const parseInlineFormatting = (text: string): TextRun[] => {
+  const parseInlineFormatting = (text: string, TextRunCtor: typeof import('docx').TextRun): TextRun[] => {
     const runs: TextRun[] = [];
     let remaining = text;
 
@@ -399,27 +399,27 @@ ${bodyContent}
       if (boldMatch && (!italicMatch || boldMatch.index! <= italicMatch.index!)) {
         // Add text before bold
         if (boldMatch.index! > 0) {
-          runs.push(new TextRun({ text: remaining.slice(0, boldMatch.index) }));
+          runs.push(new TextRunCtor({ text: remaining.slice(0, boldMatch.index) }));
         }
         // Add bold text
-        runs.push(new TextRun({ text: boldMatch[1], bold: true }));
+        runs.push(new TextRunCtor({ text: boldMatch[1], bold: true }));
         remaining = remaining.slice(boldMatch.index! + boldMatch[0].length);
       } else if (italicMatch) {
         // Add text before italic
         if (italicMatch.index! > 0) {
-          runs.push(new TextRun({ text: remaining.slice(0, italicMatch.index) }));
+          runs.push(new TextRunCtor({ text: remaining.slice(0, italicMatch.index) }));
         }
         // Add italic text
-        runs.push(new TextRun({ text: italicMatch[1], italics: true }));
+        runs.push(new TextRunCtor({ text: italicMatch[1], italics: true }));
         remaining = remaining.slice(italicMatch.index! + italicMatch[0].length);
       } else {
         // No more formatting, add rest of text
-        runs.push(new TextRun({ text: remaining }));
+        runs.push(new TextRunCtor({ text: remaining }));
         break;
       }
     }
 
-    return runs.length > 0 ? runs : [new TextRun({ text })];
+    return runs.length > 0 ? runs : [new TextRunCtor({ text })];
   };
 
   return (

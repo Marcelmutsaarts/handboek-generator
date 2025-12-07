@@ -36,16 +36,29 @@ export default function ShareHandboek({
   const isPubliek = handboek.is_publiek;
   const publiekeSlug = handboek.publieke_slug;
   const handboekId = handboek.id;
+  const supabase = createClient();
 
   const publicUrl = publiekeSlug
     ? `${typeof window !== 'undefined' ? window.location.origin : ''}/publiek/${publiekeSlug}`
     : null;
 
+  const base64ToBlob = (base64: string): { blob: Blob; mimeType: string } | null => {
+    try {
+      const match = base64.match(/^data:([^;]+);base64,(.+)$/);
+      if (!match) return null;
+
+      const mimeType = match[1];
+      const data = match[2];
+      const bytes = Uint8Array.from(atob(data), (c) => c.charCodeAt(0));
+      return { blob: new Blob([bytes], { type: mimeType }), mimeType };
+    } catch {
+      return null;
+    }
+  };
+
   const handleTogglePubliek = async () => {
     setIsLoading(true);
     setError(null);
-
-    const supabase = createClient();
 
     if (isPubliek) {
       // Maak privé - verwijder ook de HTML uit Storage
@@ -94,15 +107,26 @@ export default function ShareHandboek({
         let imageUrlMap: Record<string, string> = {};
 
         if (allImages.length > 0) {
-          const imgUploadResponse = await fetch('/api/upload-public-html', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ slug: newSlug, images: allImages }),
-          });
+          for (let i = 0; i < allImages.length; i++) {
+            const imgData = allImages[i];
+            const converted = base64ToBlob(imgData.url);
+            if (!converted) continue;
 
-          if (imgUploadResponse.ok) {
-            const imgData = await imgUploadResponse.json();
-            imageUrlMap = imgData.imageUrlMap || {};
+            const ext = converted.mimeType.split('/')[1] || 'png';
+            const fileName = `${newSlug}/img-${i}.${ext}`;
+
+            await supabase.storage.from('publiek-handboeken').upload(fileName, converted.blob, {
+              contentType: converted.mimeType,
+              cacheControl: '31536000',
+              upsert: true,
+            });
+
+            const { data: urlData } = supabase.storage
+              .from('publiek-handboeken')
+              .getPublicUrl(fileName);
+            if (urlData?.publicUrl) {
+              imageUrlMap[imgData.url] = urlData.publicUrl;
+            }
           }
         }
 
@@ -110,18 +134,13 @@ export default function ShareHandboek({
         const publicHtml = generatePublicHTML(handboek, hoofdstukken, afbeeldingenPerHoofdstuk, imageUrlMap);
 
         // Stap 3: Upload HTML (nu klein, zonder base64)
-        const uploadResponse = await fetch('/api/upload-public-html', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ slug: newSlug, html: publicHtml }),
+        const htmlFileName = `${newSlug}.html`;
+        const htmlBlob = new Blob([publicHtml], { type: 'text/html' });
+        await supabase.storage.from('publiek-handboeken').upload(htmlFileName, htmlBlob, {
+          contentType: 'text/html',
+          cacheControl: '3600',
+          upsert: true,
         });
-
-        if (!uploadResponse.ok) {
-          const uploadData = await uploadResponse.json();
-          setError(uploadData.error || 'Kon HTML niet uploaden');
-          setIsLoading(false);
-          return;
-        }
 
         // Update database met slug
         const { error: updateError } = await supabase

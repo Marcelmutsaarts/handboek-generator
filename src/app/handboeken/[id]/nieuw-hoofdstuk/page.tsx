@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import Header from '@/components/Header';
@@ -55,6 +55,7 @@ export default function NieuwHoofdstukPage() {
   const [isLoadingImages, setIsLoadingImages] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [savedHoofdstukId, setSavedHoofdstukId] = useState<string | null>(null);
+  const lastFlushRef = useRef(0);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -193,35 +194,38 @@ export default function NieuwHoofdstukPage() {
     setIsLoadingImages(true);
     const generatedImages: ChapterImage[] = [];
 
-    // Generate regular images first
-    for (const term of searchTerms) {
-      try {
-        const response = await fetch('/api/generate-image', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...getApiKeyHeader(),
-          },
-          body: JSON.stringify({ prompt: term, onderwerp }),
-        });
+    // Generate regular images concurrently (capped)
+    await Promise.allSettled(
+      searchTerms.map(async (term) => {
+        try {
+          const response = await fetch('/api/generate-image', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...getApiKeyHeader(),
+            },
+            body: JSON.stringify({ prompt: term, onderwerp }),
+          });
 
-        if (response.ok) {
-          const data = await response.json();
-          if (data.imageUrl) {
-            // Generate caption for this image
-            const caption = await generateCaption(data.imageUrl, term, onderwerp);
-            generatedImages.push({
-              url: data.imageUrl,
-              alt: data.alt || term,
-              caption,
-              isAiGenerated: true,
-            });
-            setImages([...generatedImages]);
+          if (response.ok) {
+            const data = await response.json();
+            if (data.imageUrl) {
+              const caption = await generateCaption(data.imageUrl, term, onderwerp);
+              generatedImages.push({
+                url: data.imageUrl,
+                alt: data.alt || term,
+                caption,
+                isAiGenerated: true,
+              });
+            }
           }
+        } catch (err) {
+          console.error('Error generating AI image:', err);
         }
-      } catch (err) {
-        console.error('Error generating AI image:', err);
-      }
+      })
+    );
+    if (generatedImages.length > 0) {
+      setImages([...generatedImages]);
     }
 
     // Generate infographic as last image if requested
@@ -325,7 +329,12 @@ export default function NieuwHoofdstukPage() {
       if (!reader) throw new Error('Geen response stream');
 
       const decoder = new TextDecoder();
+      lastFlushRef.current = performance.now();
       let fullContent = '';
+      const flushContent = () => {
+        setContent(fullContent);
+        lastFlushRef.current = performance.now();
+      };
 
       while (true) {
         const { done, value } = await reader.read();
@@ -343,8 +352,12 @@ export default function NieuwHoofdstukPage() {
                 setPrompt(data.content);
               } else if (data.type === 'content') {
                 fullContent += data.content;
-                setContent(fullContent);
+                const now = performance.now();
+                if (now - lastFlushRef.current > 120) {
+                  flushContent();
+                }
               } else if (data.type === 'done') {
+                flushContent();
                 setIsStreaming(false);
                 setPageState('result');
 

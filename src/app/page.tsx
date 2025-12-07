@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import Link from 'next/link';
 import InputForm from '@/components/InputForm';
 import ChapterDisplay from '@/components/ChapterDisplay';
@@ -20,6 +20,7 @@ export default function Home() {
   const [imageType, setImageType] = useState<AfbeeldingType>('geen');
   const [isLoadingImages, setIsLoadingImages] = useState(false);
   const [onderwerp, setOnderwerp] = useState('');
+  const lastFlushRef = useRef(0);
 
   const handleSubmit = async (formData: FormData) => {
     setAppState('generating');
@@ -50,7 +51,12 @@ export default function Home() {
       if (!reader) throw new Error('Geen response stream');
 
       const decoder = new TextDecoder();
+      lastFlushRef.current = performance.now();
       let fullContent = '';
+      const flushContent = () => {
+        setContent(fullContent);
+        lastFlushRef.current = performance.now();
+      };
 
       while (true) {
         const { done, value } = await reader.read();
@@ -68,8 +74,12 @@ export default function Home() {
                 setPrompt(data.content);
               } else if (data.type === 'content') {
                 fullContent += data.content;
-                setContent(fullContent);
+                const now = performance.now();
+                if (now - lastFlushRef.current > 120) {
+                  flushContent();
+                }
               } else if (data.type === 'done') {
+                flushContent();
                 setIsStreaming(false);
                 setAppState('result');
 
@@ -136,33 +146,36 @@ export default function Home() {
     setIsLoadingImages(true);
     const generatedImages: ChapterImage[] = [];
 
-    // Generate regular images first
-    for (const term of searchTerms) {
-      try {
-        const response = await fetch('/api/generate-image', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...getApiKeyHeader(),
-          },
-          body: JSON.stringify({ prompt: term, onderwerp }),
-        });
+    // Generate regular images concurrently (capped)
+    await Promise.allSettled(
+      searchTerms.map(async (term) => {
+        try {
+          const response = await fetch('/api/generate-image', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...getApiKeyHeader(),
+            },
+            body: JSON.stringify({ prompt: term, onderwerp }),
+          });
 
-        if (response.ok) {
-          const data = await response.json();
-          if (data.imageUrl) {
-            generatedImages.push({
-              url: data.imageUrl,
-              alt: data.alt || term,
-              isAiGenerated: true,
-            });
-            // Update images progressively
-            setImages([...generatedImages]);
+          if (response.ok) {
+            const data = await response.json();
+            if (data.imageUrl) {
+              generatedImages.push({
+                url: data.imageUrl,
+                alt: data.alt || term,
+                isAiGenerated: true,
+              });
+            }
           }
+        } catch (err) {
+          console.error('Error generating AI image:', err);
         }
-      } catch (err) {
-        console.error('Error generating AI image:', err);
-      }
+      })
+    );
+    if (generatedImages.length > 0) {
+      setImages([...generatedImages]);
     }
 
     // Generate infographic as last image if requested
