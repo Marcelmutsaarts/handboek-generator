@@ -4,6 +4,9 @@ import { useState } from 'react';
 import type { Paragraph, TextRun } from 'docx';
 import { ChapterImage } from '@/types';
 
+// Simple cache to avoid reparsing identical markdown fragments
+const markdownCache = new Map<string, string>();
+
 interface ChapterDisplayProps {
   content: string;
   prompt: string;
@@ -82,8 +85,10 @@ export default function ChapterDisplay({
 
   const parseMarkdown = (text: string): string => {
     if (!text) return '';
+    const cached = markdownCache.get(text);
+    if (cached) return cached;
 
-    return text
+    const parsed = text
       // Headers
       .replace(/^### (.*$)/gm, '<h3>$1</h3>')
       .replace(/^## (.*$)/gm, '<h2>$1</h2>')
@@ -114,6 +119,8 @@ export default function ChapterDisplay({
       .replace(/<\/h(\d)><\/p>/g, '</h$1>')
       .replace(/<p><(ul|ol)>/g, '<$1>')
       .replace(/<\/(ul|ol)><\/p>/g, '</$1>');
+    markdownCache.set(text, parsed);
+    return parsed;
   };
 
   const handleExportMarkdown = () => {

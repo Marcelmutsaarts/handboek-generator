@@ -1,24 +1,26 @@
 'use client';
 
-import { createClient } from '@/lib/supabase/client';
+import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User } from '@supabase/supabase-js';
-import { useEffect, useState } from 'react';
+import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
-import { useAuthContext } from '@/components/AuthProvider';
 
-export function useAuth() {
-  const context = useAuthContext();
-  if (context) {
-    return context;
-  }
+interface AuthContextValue {
+  user: User | null;
+  isLoading: boolean;
+  isAuthenticated: boolean;
+  signOut: () => Promise<void>;
+}
 
+const AuthContext = createContext<AuthContextValue | null>(null);
+
+export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
   const supabase = createClient();
 
   useEffect(() => {
-    // Get initial session
     const getUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       setUser(user);
@@ -27,7 +29,6 @@ export function useAuth() {
 
     getUser();
 
-    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, session) => {
         setUser(session?.user ?? null);
@@ -45,10 +46,13 @@ export function useAuth() {
     router.push('/login');
   };
 
-  return {
-    user,
-    isLoading,
-    isAuthenticated: !!user,
-    signOut,
-  };
+  return (
+    <AuthContext.Provider value={{ user, isLoading, isAuthenticated: !!user, signOut }}>
+      {children}
+    </AuthContext.Provider>
+  );
+}
+
+export function useAuthContext() {
+  return useContext(AuthContext);
 }
