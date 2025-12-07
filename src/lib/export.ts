@@ -1,4 +1,4 @@
-import { Document, Packer, Paragraph, TextRun, HeadingLevel, ImageRun, PageBreak } from 'docx';
+import { Document, Packer, Paragraph, TextRun, HeadingLevel, ImageRun, PageBreak, AlignmentType, VerticalAlign, convertInchesToTwip } from 'docx';
 import { saveAs } from 'file-saver';
 import { Handboek, Hoofdstuk, Afbeelding } from '@/types';
 
@@ -234,94 +234,157 @@ export const exportHandboekAsWord = async (
   hoofdstukken: Hoofdstuk[],
   afbeeldingenPerHoofdstuk: Record<string, Afbeelding[]>
 ): Promise<void> => {
-  const allElements: Paragraph[] = [];
+  const coverElements: Paragraph[] = [];
+  const contentElements: Paragraph[] = [];
 
-  // Cover image if available
+  // Cover page - full page with image as background
   if (handboek.cover_url) {
     const coverBuffer = await fetchImageAsBuffer(handboek.cover_url);
     if (coverBuffer) {
-      allElements.push(
+      // Full-page cover image (A4 size approximately 595x842 points, we use larger for quality)
+      coverElements.push(
         new Paragraph({
           children: [
             new ImageRun({
               data: coverBuffer,
-              transformation: { width: 300, height: 400 },
+              transformation: { width: 595, height: 842 },
               type: 'png',
             }),
           ],
-          spacing: { before: 1000, after: 400 },
-          alignment: 'center' as const,
+          alignment: AlignmentType.CENTER,
+        })
+      );
+
+      // Title overlay on cover
+      coverElements.push(
+        new Paragraph({
+          children: [
+            new TextRun({
+              text: handboek.titel,
+              bold: true,
+              size: 72,
+              color: 'FFFFFF',
+            }),
+          ],
+          alignment: AlignmentType.CENTER,
+          spacing: { before: 200, after: 200 },
+        })
+      );
+
+      // Subtitle/description on cover
+      if (handboek.beschrijving) {
+        coverElements.push(
+          new Paragraph({
+            children: [
+              new TextRun({
+                text: handboek.beschrijving,
+                size: 32,
+                color: 'FFFFFF',
+              }),
+            ],
+            alignment: AlignmentType.CENTER,
+            spacing: { after: 200 },
+          })
+        );
+      }
+
+      // Niveau info on cover
+      coverElements.push(
+        new Paragraph({
+          children: [
+            new TextRun({
+              text: `${NIVEAU_LABELS[handboek.niveau] || handboek.niveau} - Leerjaar ${handboek.leerjaar}`,
+              size: 28,
+              color: 'FFFFFF',
+            }),
+          ],
+          alignment: AlignmentType.CENTER,
+          spacing: { after: 100 },
+        })
+      );
+
+      if (handboek.context) {
+        coverElements.push(
+          new Paragraph({
+            children: [
+              new TextRun({
+                text: handboek.context,
+                size: 24,
+                color: 'FFFFFF',
+                italics: true,
+              }),
+            ],
+            alignment: AlignmentType.CENTER,
+          })
+        );
+      }
+    }
+  } else {
+    // Fallback title page without cover image
+    coverElements.push(
+      new Paragraph({
+        children: [
+          new TextRun({
+            text: handboek.titel,
+            bold: true,
+            size: 56,
+          }),
+        ],
+        alignment: AlignmentType.CENTER,
+        spacing: { before: 2000, after: 400 },
+      })
+    );
+
+    if (handboek.beschrijving) {
+      coverElements.push(
+        new Paragraph({
+          children: [
+            new TextRun({
+              text: handboek.beschrijving,
+              size: 28,
+              color: '666666',
+            }),
+          ],
+          alignment: AlignmentType.CENTER,
+          spacing: { after: 400 },
+        })
+      );
+    }
+
+    coverElements.push(
+      new Paragraph({
+        children: [
+          new TextRun({
+            text: `${NIVEAU_LABELS[handboek.niveau] || handboek.niveau} - Leerjaar ${handboek.leerjaar}`,
+            size: 24,
+            color: '888888',
+          }),
+        ],
+        alignment: AlignmentType.CENTER,
+        spacing: { after: 200 },
+      })
+    );
+
+    if (handboek.context) {
+      coverElements.push(
+        new Paragraph({
+          children: [
+            new TextRun({
+              text: `Context: ${handboek.context}`,
+              size: 24,
+              color: '888888',
+              italics: true,
+            }),
+          ],
+          alignment: AlignmentType.CENTER,
+          spacing: { after: 400 },
         })
       );
     }
   }
 
-  // Title page
-  allElements.push(
-    new Paragraph({
-      children: [
-        new TextRun({
-          text: handboek.titel,
-          bold: true,
-          size: 56,
-        }),
-      ],
-      spacing: { before: handboek.cover_url ? 400 : 2000, after: 400 },
-    })
-  );
-
-  if (handboek.beschrijving) {
-    allElements.push(
-      new Paragraph({
-        children: [
-          new TextRun({
-            text: handboek.beschrijving,
-            size: 28,
-            color: '666666',
-          }),
-        ],
-        spacing: { after: 400 },
-      })
-    );
-  }
-
-  allElements.push(
-    new Paragraph({
-      children: [
-        new TextRun({
-          text: `${NIVEAU_LABELS[handboek.niveau] || handboek.niveau} - Leerjaar ${handboek.leerjaar}`,
-          size: 24,
-          color: '888888',
-        }),
-      ],
-      spacing: { after: 200 },
-    })
-  );
-
-  if (handboek.context) {
-    allElements.push(
-      new Paragraph({
-        children: [
-          new TextRun({
-            text: `Context: ${handboek.context}`,
-            size: 24,
-            color: '888888',
-            italics: true,
-          }),
-        ],
-        spacing: { after: 400 },
-      })
-    );
-  }
-
-  // Table of contents
-  allElements.push(
-    new Paragraph({
-      children: [new PageBreak()],
-    })
-  );
-
-  allElements.push(
+  // Table of contents (starts on new page)
+  contentElements.push(
     new Paragraph({
       text: 'Inhoudsopgave',
       heading: HeadingLevel.HEADING_1,
@@ -330,7 +393,7 @@ export const exportHandboekAsWord = async (
   );
 
   hoofdstukken.forEach((hoofdstuk, index) => {
-    allElements.push(
+    contentElements.push(
       new Paragraph({
         children: [
           new TextRun({
@@ -349,14 +412,14 @@ export const exportHandboekAsWord = async (
     const afbeeldingen = afbeeldingenPerHoofdstuk[hoofdstuk.id] || [];
 
     // Page break before each chapter
-    allElements.push(
+    contentElements.push(
       new Paragraph({
         children: [new PageBreak()],
       })
     );
 
     // Chapter number header
-    allElements.push(
+    contentElements.push(
       new Paragraph({
         children: [
           new TextRun({
@@ -380,10 +443,10 @@ export const exportHandboekAsWord = async (
 
     // Process chapter content
     const chapterElements = await processContentForWord(hoofdstuk.content, chapterImages);
-    allElements.push(...chapterElements);
+    contentElements.push(...chapterElements);
   }
 
-  // Create document
+  // Create document with separate sections for cover and content
   const doc = new Document({
     numbering: {
       config: [
@@ -401,8 +464,23 @@ export const exportHandboekAsWord = async (
       ],
     },
     sections: [
+      // Cover page section (no margins for full-page cover)
       {
-        children: allElements,
+        properties: handboek.cover_url ? {
+          page: {
+            margin: {
+              top: 0,
+              right: 0,
+              bottom: 0,
+              left: 0,
+            },
+          },
+        } : {},
+        children: coverElements,
+      },
+      // Content section with normal margins
+      {
+        children: contentElements,
       },
     ],
   });
@@ -421,19 +499,35 @@ export const exportHandboekAsHTML = (
 ): void => {
   let bodyContent = '';
 
-  // Title with optional cover
-  bodyContent += `<header style="text-align: center; margin-bottom: 3rem; padding-bottom: 2rem; border-bottom: 2px solid #e2e8f0;">
-    ${handboek.cover_url ? `<img src="${handboek.cover_url}" alt="Cover" style="max-width: 280px; max-height: 380px; object-fit: cover; border-radius: 0.5rem; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2); margin-bottom: 2rem;">` : ''}
-    <h1 style="font-size: 2.5rem; margin-bottom: 0.5rem;">${handboek.titel}</h1>
-    ${handboek.beschrijving ? `<p style="color: #64748b; font-size: 1.1rem;">${handboek.beschrijving}</p>` : ''}
-    <p style="color: #94a3b8; font-size: 0.9rem;">
-      ${NIVEAU_LABELS[handboek.niveau] || handboek.niveau} - Leerjaar ${handboek.leerjaar}
-      ${handboek.context ? ` | ${handboek.context}` : ''}
-    </p>
-  </header>`;
+  // Full-page cover or fallback title page
+  if (handboek.cover_url) {
+    bodyContent += `<div class="cover-page">
+      <img src="${handboek.cover_url}" alt="Cover" class="cover-image">
+      <div class="cover-overlay">
+        <h1 class="cover-title">${handboek.titel}</h1>
+        ${handboek.beschrijving ? `<p class="cover-description">${handboek.beschrijving}</p>` : ''}
+        <p class="cover-meta">
+          ${NIVEAU_LABELS[handboek.niveau] || handboek.niveau} - Leerjaar ${handboek.leerjaar}
+          ${handboek.context ? `<br><em>${handboek.context}</em>` : ''}
+        </p>
+      </div>
+    </div>`;
+  } else {
+    bodyContent += `<header class="title-page">
+      <h1 style="font-size: 2.5rem; margin-bottom: 0.5rem;">${handboek.titel}</h1>
+      ${handboek.beschrijving ? `<p style="color: #64748b; font-size: 1.1rem;">${handboek.beschrijving}</p>` : ''}
+      <p style="color: #94a3b8; font-size: 0.9rem;">
+        ${NIVEAU_LABELS[handboek.niveau] || handboek.niveau} - Leerjaar ${handboek.leerjaar}
+        ${handboek.context ? ` | ${handboek.context}` : ''}
+      </p>
+    </header>`;
+  }
+
+  // Content wrapper for TOC and chapters
+  bodyContent += `<div class="content-wrapper">`;
 
   // Table of contents
-  bodyContent += `<nav style="margin-bottom: 3rem; padding: 1.5rem; background: #f8fafc; border-radius: 0.5rem;">
+  bodyContent += `<nav>
     <h2 style="font-size: 1.25rem; margin-bottom: 1rem;">Inhoudsopgave</h2>
     <ol style="padding-left: 1.5rem;">
       ${hoofdstukken.map((h, i) => `<li style="margin-bottom: 0.5rem;"><a href="#hoofdstuk-${i + 1}" style="color: #3b82f6; text-decoration: none;">${h.titel}</a></li>`).join('')}
@@ -474,6 +568,9 @@ export const exportHandboekAsHTML = (
     bodyContent += '</article>';
   });
 
+  // Close content wrapper
+  bodyContent += `</div>`;
+
   const htmlContent = `<!DOCTYPE html>
 <html lang="nl">
 <head>
@@ -481,7 +578,66 @@ export const exportHandboekAsHTML = (
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${handboek.titel}</title>
   <style>
-    body { font-family: system-ui, sans-serif; max-width: 800px; margin: 0 auto; padding: 2rem; line-height: 1.6; }
+    body { font-family: system-ui, sans-serif; margin: 0; padding: 0; line-height: 1.6; }
+    .content-wrapper { max-width: 800px; margin: 0 auto; padding: 2rem; }
+
+    /* Full-page cover styles */
+    .cover-page {
+      position: relative;
+      width: 100%;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .cover-image {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      z-index: 1;
+    }
+    .cover-overlay {
+      position: relative;
+      z-index: 2;
+      text-align: center;
+      color: white;
+      padding: 2rem;
+      background: rgba(0, 0, 0, 0.5);
+      border-radius: 1rem;
+      max-width: 80%;
+    }
+    .cover-title {
+      font-size: 3rem;
+      font-weight: bold;
+      margin-bottom: 1rem;
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+    }
+    .cover-description {
+      font-size: 1.25rem;
+      margin-bottom: 1rem;
+    }
+    .cover-meta {
+      font-size: 1rem;
+      opacity: 0.9;
+    }
+
+    /* Fallback title page */
+    .title-page {
+      text-align: center;
+      padding: 4rem 2rem;
+      min-height: 80vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      border-bottom: 2px solid #e2e8f0;
+      margin-bottom: 2rem;
+    }
+
     h1 { font-size: 1.875rem; margin-bottom: 1rem; }
     h2 { font-size: 1.375rem; margin-top: 2rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem; }
     h3 { font-size: 1.125rem; margin-top: 1.5rem; }
@@ -489,7 +645,19 @@ export const exportHandboekAsHTML = (
     li { margin-bottom: 0.5rem; }
     img { max-width: 100%; border-radius: 0.5rem; margin: 1rem 0; }
     figcaption { font-size: 0.75rem; color: #64748b; }
+    nav { margin-bottom: 3rem; padding: 1.5rem; background: #f8fafc; border-radius: 0.5rem; }
+    article { margin-bottom: 3rem; padding-top: 2rem; border-top: 1px solid #e2e8f0; }
+
     @media print {
+      .cover-page {
+        height: 100vh;
+        page-break-after: always;
+      }
+      .title-page {
+        height: 100vh;
+        page-break-after: always;
+      }
+      nav { page-break-after: always; }
       article { page-break-before: always; }
       article:first-of-type { page-break-before: auto; }
     }

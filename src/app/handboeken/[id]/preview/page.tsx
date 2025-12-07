@@ -211,27 +211,34 @@ export default function HandboekPreviewPage() {
       {/* Printable content */}
       <div ref={printRef} className="print-content">
         {/* Cover page */}
-        <div className="cover-page">
-          <div className="cover-content">
-            {handboek.cover_url && (
-              <div className="cover-image-wrapper">
-                <img
-                  src={handboek.cover_url}
-                  alt={`Cover van ${handboek.titel}`}
-                  className="cover-image"
-                />
-              </div>
-            )}
-            <h1 className="cover-title">{handboek.titel}</h1>
-            {handboek.beschrijving && (
-              <p className="cover-description">{handboek.beschrijving}</p>
-            )}
-            <div className="cover-meta">
-              <p>{NIVEAU_LABELS[handboek.niveau] || handboek.niveau} - Leerjaar {handboek.leerjaar}</p>
-              {handboek.context && <p className="cover-context">{handboek.context}</p>}
+        {handboek.cover_url ? (
+          <div className="cover-page-full">
+            <img
+              src={handboek.cover_url}
+              alt={`Cover van ${handboek.titel}`}
+              className="cover-full-image"
+            />
+            <div className="cover-overlay">
+              <h1 className="cover-title-overlay">{handboek.titel}</h1>
+              <p className="cover-meta-overlay">
+                {NIVEAU_LABELS[handboek.niveau] || handboek.niveau} - Leerjaar {handboek.leerjaar}
+              </p>
             </div>
           </div>
-        </div>
+        ) : (
+          <div className="cover-page">
+            <div className="cover-content">
+              <h1 className="cover-title">{handboek.titel}</h1>
+              {handboek.beschrijving && (
+                <p className="cover-description">{handboek.beschrijving}</p>
+              )}
+              <div className="cover-meta">
+                <p>{NIVEAU_LABELS[handboek.niveau] || handboek.niveau} - Leerjaar {handboek.leerjaar}</p>
+                {handboek.context && <p className="cover-context">{handboek.context}</p>}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Table of contents */}
         <div className="toc-page">
@@ -280,16 +287,46 @@ export default function HandboekPreviewPage() {
           margin-bottom: 3rem;
         }
 
-        .cover-image-wrapper {
-          margin-bottom: 2rem;
+        .cover-page-full {
+          min-height: 100vh;
+          position: relative;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin-bottom: 3rem;
+          background: #1a1a2e;
         }
 
-        .cover-image {
-          max-width: 280px;
-          max-height: 380px;
+        .cover-full-image {
+          width: 100%;
+          height: 100vh;
           object-fit: cover;
-          border-radius: 0.5rem;
-          box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2);
+          position: absolute;
+          top: 0;
+          left: 0;
+        }
+
+        .cover-overlay {
+          position: relative;
+          z-index: 10;
+          text-align: center;
+          padding: 2rem;
+          background: rgba(0, 0, 0, 0.5);
+          border-radius: 1rem;
+          max-width: 80%;
+        }
+
+        .cover-title-overlay {
+          font-size: 3rem;
+          font-weight: bold;
+          color: white;
+          margin-bottom: 1rem;
+          text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        .cover-meta-overlay {
+          font-size: 1.25rem;
+          color: rgba(255, 255, 255, 0.9);
         }
 
         .cover-title {
@@ -450,9 +487,29 @@ export default function HandboekPreviewPage() {
             margin-bottom: 0;
           }
 
-          .cover-image {
-            max-width: 200px;
-            max-height: 280px;
+          .cover-page-full {
+            height: 100vh;
+            page-break-after: always;
+            margin-bottom: 0;
+          }
+
+          .cover-full-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+          }
+
+          .cover-overlay {
+            background: rgba(0, 0, 0, 0.6);
+            padding: 1.5rem;
+          }
+
+          .cover-title-overlay {
+            font-size: 24pt;
+          }
+
+          .cover-meta-overlay {
+            font-size: 12pt;
           }
 
           .cover-title {
