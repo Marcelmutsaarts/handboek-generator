@@ -22,7 +22,7 @@ export default function PubliekHandboekPage() {
       // Check of handboek publiek is
       const { data: handboekData, error: handboekError } = await supabase
         .from('handboeken')
-        .select('id, titel')
+        .select('id, titel, publieke_html')
         .eq('publieke_slug', slug)
         .eq('is_publiek', true)
         .single();
@@ -41,11 +41,17 @@ export default function PubliekHandboekPage() {
         if (response.ok) {
           const html = await response.text();
           setHtmlContent(html);
+        } else if (handboekData.publieke_html) {
+          setHtmlContent(handboekData.publieke_html);
         } else {
           setError('Dit handboek is nog niet beschikbaar. Vraag de eigenaar om het opnieuw te delen.');
         }
       } catch {
-        setError('Kon het handboek niet laden.');
+        if (handboekData.publieke_html) {
+          setHtmlContent(handboekData.publieke_html);
+        } else {
+          setError('Kon het handboek niet laden.');
+        }
       }
 
       setIsLoading(false);

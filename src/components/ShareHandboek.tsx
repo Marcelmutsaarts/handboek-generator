@@ -59,7 +59,7 @@ export default function ShareHandboek({
 
       const { error: updateError } = await supabase
         .from('handboeken')
-        .update({ is_publiek: false, publieke_slug: null })
+        .update({ is_publiek: false, publieke_slug: null, publieke_html: null })
         .eq('id', handboekId);
 
       if (updateError) {
@@ -129,6 +129,7 @@ export default function ShareHandboek({
           .update({
             is_publiek: true,
             publieke_slug: newSlug,
+            publieke_html: publicHtml,
           })
           .eq('id', handboekId);
 
