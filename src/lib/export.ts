@@ -554,15 +554,28 @@ export const generatePublicHTML = (
         const image = afbeeldingen[imageIndex];
         imageIndex++;
         if (image) {
-          const sourceCaption = image.is_ai_generated
-            ? 'AI-gegenereerde afbeelding'
-            : `Foto: ${image.photographer || 'Pexels'}`;
-          bodyContent += `
+          // Skip base64 images (too large) - only include URL-based images
+          const isBase64 = image.url.startsWith('data:');
+          if (!isBase64) {
+            const sourceCaption = image.is_ai_generated
+              ? 'AI-gegenereerde afbeelding'
+              : `Foto: ${image.photographer || 'Pexels'}`;
+            bodyContent += `
 <figure class="image-figure">
   <img src="${image.url}" alt="${escapeHtml(image.alt || '')}" loading="lazy">
   ${image.caption ? `<figcaption class="image-caption">${escapeHtml(image.caption)}</figcaption>` : ''}
   <figcaption class="image-source">${sourceCaption}</figcaption>
 </figure>`;
+          } else {
+            // For base64 images, show a placeholder with caption
+            bodyContent += `
+<figure class="image-figure image-placeholder">
+  <div class="placeholder-box">
+    <p>Afbeelding: ${escapeHtml(image.alt || 'Illustratie')}</p>
+  </div>
+  ${image.caption ? `<figcaption class="image-caption">${escapeHtml(image.caption)}</figcaption>` : ''}
+</figure>`;
+          }
         }
       }
     }
@@ -748,6 +761,18 @@ export const generatePublicHTML = (
       font-size: 0.75rem;
       color: #6b7280;
       margin-top: 0.25rem;
+    }
+    .image-placeholder .placeholder-box {
+      background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+      border: 2px dashed #cbd5e1;
+      border-radius: 0.5rem;
+      padding: 3rem 2rem;
+      text-align: center;
+      color: #64748b;
+    }
+    .image-placeholder .placeholder-box p {
+      margin: 0;
+      font-style: italic;
     }
 
     /* Footer */
