@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import type { Paragraph, TextRun } from 'docx';
+import { useMemo, useState } from 'react';
+import type { Paragraph, TextRun as DocxTextRun } from 'docx';
 import { ChapterImage } from '@/types';
 
 // Simple cache to avoid reparsing identical markdown fragments
@@ -100,7 +100,7 @@ export default function ChapterDisplay({
       // Numbered lists
       .replace(/^\d+\.\s+(.*$)/gm, '<li>$1</li>')
       // Bullet lists
-      .replace(/^[-•]\s+(.*$)/gm, '<li>$1</li>')
+      .replace(/^[-ƒ?½]\s+(.*$)/gm, '<li>$1</li>')
       // Wrap consecutive li elements in ul/ol
       .replace(/(<li>.*<\/li>\n?)+/g, (match) => {
         const isNumbered = text.includes('1.');
@@ -198,7 +198,7 @@ ${bodyContent}
       await navigator.clipboard.writeText(content);
       alert('Inhoud gekopieerd naar klembord!');
     } catch {
-      alert('Kopiëren mislukt. Probeer het opnieuw.');
+      alert('Kopi\u00ebren mislukt. Probeer het opnieuw.');
     }
   };
 
@@ -230,10 +230,8 @@ ${bodyContent}
       }
     };
 
-    // Process content parts
     for (let i = 0; i < parts.length; i++) {
       if (i % 2 === 0) {
-        // Text content - parse markdown
         const textPart = parts[i];
         const lines = textPart.split('\n');
 
@@ -241,7 +239,6 @@ ${bodyContent}
           const trimmedLine = line.trim();
           if (!trimmedLine) continue;
 
-          // H1
           if (trimmedLine.startsWith('# ')) {
             docElements.push(
               new Paragraph({
@@ -250,9 +247,7 @@ ${bodyContent}
                 spacing: { before: 400, after: 200 },
               })
             );
-          }
-          // H2
-          else if (trimmedLine.startsWith('## ')) {
+          } else if (trimmedLine.startsWith('## ')) {
             docElements.push(
               new Paragraph({
                 text: trimmedLine.slice(3),
@@ -260,9 +255,7 @@ ${bodyContent}
                 spacing: { before: 300, after: 150 },
               })
             );
-          }
-          // H3
-          else if (trimmedLine.startsWith('### ')) {
+          } else if (trimmedLine.startsWith('### ')) {
             docElements.push(
               new Paragraph({
                 text: trimmedLine.slice(4),
@@ -270,9 +263,7 @@ ${bodyContent}
                 spacing: { before: 200, after: 100 },
               })
             );
-          }
-          // Numbered list
-          else if (/^\d+\.\s/.test(trimmedLine)) {
+          } else if (/^\d+\.\s/.test(trimmedLine)) {
             const text = trimmedLine.replace(/^\d+\.\s/, '');
             docElements.push(
               new Paragraph({
@@ -281,9 +272,7 @@ ${bodyContent}
                 spacing: { before: 100, after: 100 },
               })
             );
-          }
-          // Bullet list (supports -, •, and * markers)
-          else if (trimmedLine.startsWith('- ') || trimmedLine.startsWith('• ') || trimmedLine.startsWith('* ')) {
+          } else if (trimmedLine.startsWith('- ') || trimmedLine.startsWith('ƒ?½ ') || trimmedLine.startsWith('* ')) {
             const text = trimmedLine.slice(2);
             docElements.push(
               new Paragraph({
@@ -292,9 +281,7 @@ ${bodyContent}
                 spacing: { before: 100, after: 100 },
               })
             );
-          }
-          // Regular paragraph
-          else {
+          } else {
             docElements.push(
               new Paragraph({
                 children: parseInlineFormatting(trimmedLine, TextRun),
@@ -304,14 +291,12 @@ ${bodyContent}
           }
         }
       } else {
-        // Image placeholder
         const image = images[imageIndex];
         imageIndex++;
 
         if (image) {
           const imageBuffer = await fetchImageAsBuffer(image.url);
           if (imageBuffer) {
-            // Add image
             docElements.push(
               new Paragraph({
                 children: [
@@ -325,7 +310,6 @@ ${bodyContent}
               })
             );
 
-            // Add image caption if available
             if (image.caption) {
               docElements.push(
                 new Paragraph({
@@ -341,7 +325,6 @@ ${bodyContent}
               );
             }
 
-            // Add source caption
             const sourceCaption = image.isAiGenerated
               ? 'AI-gegenereerde afbeelding via Gemini'
               : `Foto door ${image.photographer} via Pexels`;
@@ -363,7 +346,6 @@ ${bodyContent}
       }
     }
 
-    // Create document
     const doc = new Document({
       numbering: {
         config: [
@@ -387,68 +369,34 @@ ${bodyContent}
       ],
     });
 
-    // Generate and download
     const buffer = await Packer.toBlob(doc);
     saveAs(buffer, 'hoofdstuk.docx');
   };
 
-  // Helper function to parse bold and italic in text
-  const parseInlineFormatting = (text: string, TextRunCtor: typeof import('docx').TextRun): TextRun[] => {
-    const runs: TextRun[] = [];
-    let remaining = text;
-
-    while (remaining.length > 0) {
-      // Check for bold
-      const boldMatch = remaining.match(/\*\*(.+?)\*\*/);
-      // Check for italic
-      const italicMatch = remaining.match(/\*(.+?)\*/);
-
-      if (boldMatch && (!italicMatch || boldMatch.index! <= italicMatch.index!)) {
-        // Add text before bold
-        if (boldMatch.index! > 0) {
-          runs.push(new TextRunCtor({ text: remaining.slice(0, boldMatch.index) }));
-        }
-        // Add bold text
-        runs.push(new TextRunCtor({ text: boldMatch[1], bold: true }));
-        remaining = remaining.slice(boldMatch.index! + boldMatch[0].length);
-      } else if (italicMatch) {
-        // Add text before italic
-        if (italicMatch.index! > 0) {
-          runs.push(new TextRunCtor({ text: remaining.slice(0, italicMatch.index) }));
-        }
-        // Add italic text
-        runs.push(new TextRunCtor({ text: italicMatch[1], italics: true }));
-        remaining = remaining.slice(italicMatch.index! + italicMatch[0].length);
-      } else {
-        // No more formatting, add rest of text
-        runs.push(new TextRunCtor({ text: remaining }));
-        break;
-      }
-    }
-
-    return runs.length > 0 ? runs : [new TextRunCtor({ text })];
-  };
+  const handleExportMarkdownMemo = useMemo(() => handleExportMarkdown, [content]);
+  const handleExportHTMLMemo = useMemo(() => handleExportHTML, [content, images]);
+  const handleExportWordMemo = useMemo(() => handleExportWord, [content, images]);
 
   return (
     <div className="space-y-6">
       {/* Export buttons */}
       <div className="flex flex-wrap gap-2 pb-4 border-b border-border">
         <button
-          onClick={handleExportMarkdown}
+          onClick={handleExportMarkdownMemo}
           disabled={isStreaming}
           className="px-4 py-2 text-sm bg-white border border-border rounded-lg hover:bg-accent transition-colors disabled:opacity-50"
         >
           Download Markdown
         </button>
         <button
-          onClick={handleExportHTML}
+          onClick={handleExportHTMLMemo}
           disabled={isStreaming}
           className="px-4 py-2 text-sm bg-white border border-border rounded-lg hover:bg-accent transition-colors disabled:opacity-50"
         >
           Download HTML
         </button>
         <button
-          onClick={handleExportWord}
+          onClick={handleExportWordMemo}
           disabled={isStreaming}
           className="px-4 py-2 text-sm bg-white border border-border rounded-lg hover:bg-accent transition-colors disabled:opacity-50"
         >
@@ -501,3 +449,40 @@ ${bodyContent}
     </div>
   );
 }
+
+// Helper function to parse bold and italic in text for docx
+const parseInlineFormatting = (text: string, TextRunCtor: typeof DocxTextRun): DocxTextRun[] => {
+  const runs: DocxTextRun[] = [];
+  let remaining = text;
+
+  while (remaining.length > 0) {
+    // Check for bold
+    const boldMatch = remaining.match(/\*\*(.+?)\*\*/);
+    // Check for italic
+    const italicMatch = remaining.match(/\*(.+?)\*/);
+
+    if (boldMatch && (!italicMatch || boldMatch.index! <= italicMatch.index!)) {
+      // Add text before bold
+      if (boldMatch.index! > 0) {
+        runs.push(new TextRunCtor({ text: remaining.slice(0, boldMatch.index) }));
+      }
+      // Add bold text
+      runs.push(new TextRunCtor({ text: boldMatch[1], bold: true }));
+      remaining = remaining.slice(boldMatch.index! + boldMatch[0].length);
+    } else if (italicMatch) {
+      // Add text before italic
+      if (italicMatch.index! > 0) {
+        runs.push(new TextRunCtor({ text: remaining.slice(0, italicMatch.index) }));
+      }
+      // Add italic text
+      runs.push(new TextRunCtor({ text: italicMatch[1], italics: true }));
+      remaining = remaining.slice(italicMatch.index! + italicMatch[0].length);
+    } else {
+      // No more formatting, add rest of text
+      runs.push(new TextRunCtor({ text: remaining }));
+      break;
+    }
+  }
+
+  return runs.length > 0 ? runs : [new TextRunCtor({ text })];
+};
