@@ -2,18 +2,19 @@
 -- Voer dit uit in de Supabase SQL Editor
 
 -- Bucket aanmaken (indien nog niet bestaat)
+-- Staat HTML en afbeeldingen toe
 INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 VALUES (
   'publiek-handboeken',
   'publiek-handboeken',
   true,  -- publiek toegankelijk
   52428800,  -- 50MB max file size
-  ARRAY['text/html']::text[]
+  ARRAY['text/html', 'image/png', 'image/jpeg', 'image/webp', 'image/gif']::text[]
 )
 ON CONFLICT (id) DO UPDATE SET
   public = true,
   file_size_limit = 52428800,
-  allowed_mime_types = ARRAY['text/html']::text[];
+  allowed_mime_types = ARRAY['text/html', 'image/png', 'image/jpeg', 'image/webp', 'image/gif']::text[];
 
 -- Policy: iedereen kan publieke bestanden lezen
 CREATE POLICY "Publieke handboeken zijn leesbaar" ON storage.objects

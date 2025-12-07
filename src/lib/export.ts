@@ -492,17 +492,26 @@ export const exportHandboekAsWord = async (
 };
 
 // Generate static HTML for public sharing (returns HTML string)
+// imageUrlMap: maps original base64/URLs to new Storage URLs
 export const generatePublicHTML = (
   handboek: Handboek,
   hoofdstukken: Hoofdstuk[],
-  afbeeldingenPerHoofdstuk: Record<string, Afbeelding[]>
+  afbeeldingenPerHoofdstuk: Record<string, Afbeelding[]>,
+  imageUrlMap?: Record<string, string> // optional: maps original URLs to storage URLs
 ): string => {
+  // Helper to get the right image URL
+  const getImageUrl = (originalUrl: string): string => {
+    if (imageUrlMap && imageUrlMap[originalUrl]) {
+      return imageUrlMap[originalUrl];
+    }
+    return originalUrl;
+  };
   let bodyContent = '';
 
   // Full-page cover or fallback title page
   if (handboek.cover_url) {
     bodyContent += `<div class="cover-page">
-      <img src="${handboek.cover_url}" alt="Cover" class="cover-image">
+      <img src="${getImageUrl(handboek.cover_url)}" alt="Cover" class="cover-image">
       <div class="cover-overlay">
         <h1 class="cover-title">${escapeHtml(handboek.titel)}</h1>
         ${handboek.beschrijving ? `<p class="cover-description">${escapeHtml(handboek.beschrijving)}</p>` : ''}
@@ -559,7 +568,7 @@ export const generatePublicHTML = (
             : `Foto: ${image.photographer || 'Pexels'}`;
           bodyContent += `
 <figure class="image-figure">
-  <img src="${image.url}" alt="${escapeHtml(image.alt || '')}" loading="lazy">
+  <img src="${getImageUrl(image.url)}" alt="${escapeHtml(image.alt || '')}" loading="lazy">
   ${image.caption ? `<figcaption class="image-caption">${escapeHtml(image.caption)}</figcaption>` : ''}
   <figcaption class="image-source">${sourceCaption}</figcaption>
 </figure>`;

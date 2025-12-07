@@ -72,63 +72,79 @@ export default function ShareHandboek({
       // Maak publiek met nieuwe slug en upload statische HTML naar Storage
       const newSlug = generateSlug();
 
-      // Genereer de statische HTML met alle content en afbeeldingen
-      const publicHtml = generatePublicHTML(handboek, hoofdstukken, afbeeldingenPerHoofdstuk);
+      try {
+        // Verzamel alle base64 afbeeldingen
+        const allImages: { url: string; id: string }[] = [];
 
-      // Upload naar Supabase Storage
-      const uploadResponse = await fetch('/api/upload-public-html', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ slug: newSlug, html: publicHtml }),
-      });
+        // Cover afbeelding
+        if (handboek.cover_url?.startsWith('data:')) {
+          allImages.push({ url: handboek.cover_url, id: 'cover' });
+        }
 
-      if (!uploadResponse.ok) {
-        const uploadData = await uploadResponse.json();
-        setError(uploadData.error || 'Kon HTML niet uploaden');
-        setIsLoading(false);
-        return;
-      }
+        // Hoofdstuk afbeeldingen
+        Object.values(afbeeldingenPerHoofdstuk).forEach(afbeeldingen => {
+          afbeeldingen.forEach(afb => {
+            if (afb.url.startsWith('data:')) {
+              allImages.push({ url: afb.url, id: afb.id });
+            }
+          });
+        });
 
-      // Update database met slug (geen HTML meer in database)
-      const { error: updateError } = await supabase
-        .from('handboeken')
-        .update({
-          is_publiek: true,
-          publieke_slug: newSlug,
-        })
-        .eq('id', handboekId);
+        // Stap 1: Upload afbeeldingen eerst (als er base64 zijn)
+        let imageUrlMap: Record<string, string> = {};
 
-      if (updateError) {
-        console.error('Error making public:', updateError);
-        // Probeer opnieuw met andere slug bij conflict
-        if (updateError.code === '23505') {
-          const retrySlug = generateSlug();
-
-          // Upload opnieuw met nieuwe slug
-          await fetch('/api/upload-public-html', {
+        if (allImages.length > 0) {
+          const imgUploadResponse = await fetch('/api/upload-public-html', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ slug: retrySlug, html: publicHtml }),
+            body: JSON.stringify({ slug: newSlug, images: allImages }),
           });
 
-          const { error: retryError } = await supabase
-            .from('handboeken')
-            .update({
-              is_publiek: true,
-              publieke_slug: retrySlug,
-            })
-            .eq('id', handboekId);
+          if (imgUploadResponse.ok) {
+            const imgData = await imgUploadResponse.json();
+            imageUrlMap = imgData.imageUrlMap || {};
+          }
+        }
 
-          if (retryError) {
-            setError('Kon handboek niet delen. Probeer opnieuw.');
+        // Stap 2: Genereer HTML met storage URLs in plaats van base64
+        const publicHtml = generatePublicHTML(handboek, hoofdstukken, afbeeldingenPerHoofdstuk, imageUrlMap);
+
+        // Stap 3: Upload HTML (nu klein, zonder base64)
+        const uploadResponse = await fetch('/api/upload-public-html', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ slug: newSlug, html: publicHtml }),
+        });
+
+        if (!uploadResponse.ok) {
+          const uploadData = await uploadResponse.json();
+          setError(uploadData.error || 'Kon HTML niet uploaden');
+          setIsLoading(false);
+          return;
+        }
+
+        // Update database met slug
+        const { error: updateError } = await supabase
+          .from('handboeken')
+          .update({
+            is_publiek: true,
+            publieke_slug: newSlug,
+          })
+          .eq('id', handboekId);
+
+        if (updateError) {
+          console.error('Error making public:', updateError);
+          if (updateError.code === '23505') {
+            setError('Slug conflict. Probeer opnieuw.');
           } else {
-            onUpdate(true, retrySlug);
+            setError('Kon handboek niet delen');
           }
         } else {
-          setError('Kon handboek niet delen');
+          onUpdate(true, newSlug);
         }
-      } else {
-        onUpdate(true, newSlug);
+      } catch (err) {
+        console.error('Error sharing:', err);
+        setError('Er ging iets mis bij het delen');
       }
     }
 

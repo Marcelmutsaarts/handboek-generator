@@ -1,13 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 
+// Helper to convert base64 to blob
+function base64ToBlob(base64: string): { blob: Blob; mimeType: string } | null {
+  try {
+    const match = base64.match(/^data:([^;]+);base64,(.+)$/);
+    if (!match) return null;
+
+    const mimeType = match[1];
+    const data = match[2];
+    const bytes = Uint8Array.from(atob(data), c => c.charCodeAt(0));
+    return { blob: new Blob([bytes], { type: mimeType }), mimeType };
+  } catch {
+    return null;
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
-    const { slug, html } = await request.json();
+    const { slug, html, images } = await request.json();
 
-    if (!slug || !html) {
+    if (!slug) {
       return NextResponse.json(
-        { error: 'Slug en HTML zijn vereist' },
+        { error: 'Slug is vereist' },
         { status: 400 }
       );
     }
@@ -23,40 +38,74 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Upload HTML to Supabase Storage
-    const fileName = `${slug}.html`;
-    const htmlBlob = new Blob([html], { type: 'text/html' });
+    const imageUrlMap: Record<string, string> = {};
 
-    // First, try to delete any existing file with this name
-    await supabase.storage
-      .from('publiek-handboeken')
-      .remove([fileName]);
+    // Upload images first (if provided)
+    if (images && Array.isArray(images)) {
+      for (let i = 0; i < images.length; i++) {
+        const imgData = images[i];
+        if (!imgData.url || !imgData.url.startsWith('data:')) continue;
 
-    // Upload the new file
-    const { error: uploadError } = await supabase.storage
-      .from('publiek-handboeken')
-      .upload(fileName, htmlBlob, {
-        contentType: 'text/html',
-        cacheControl: '3600',
-        upsert: true,
-      });
+        const result = base64ToBlob(imgData.url);
+        if (!result) continue;
 
-    if (uploadError) {
-      console.error('Upload error:', uploadError);
-      return NextResponse.json(
-        { error: `Upload mislukt: ${uploadError.message}` },
-        { status: 500 }
-      );
+        const ext = result.mimeType.split('/')[1] || 'png';
+        const fileName = `${slug}/img-${i}.${ext}`;
+
+        // Delete existing file if any
+        await supabase.storage.from('publiek-handboeken').remove([fileName]);
+
+        // Upload new file
+        const { error: uploadError } = await supabase.storage
+          .from('publiek-handboeken')
+          .upload(fileName, result.blob, {
+            contentType: result.mimeType,
+            cacheControl: '31536000', // 1 year cache
+            upsert: true,
+          });
+
+        if (!uploadError) {
+          const { data: urlData } = supabase.storage
+            .from('publiek-handboeken')
+            .getPublicUrl(fileName);
+          imageUrlMap[imgData.url] = urlData.publicUrl;
+        }
+      }
     }
 
-    // Get the public URL
+    // Upload HTML file
+    if (html) {
+      const fileName = `${slug}.html`;
+      const htmlBlob = new Blob([html], { type: 'text/html' });
+
+      await supabase.storage.from('publiek-handboeken').remove([fileName]);
+
+      const { error: uploadError } = await supabase.storage
+        .from('publiek-handboeken')
+        .upload(fileName, htmlBlob, {
+          contentType: 'text/html',
+          cacheControl: '3600',
+          upsert: true,
+        });
+
+      if (uploadError) {
+        console.error('Upload error:', uploadError);
+        return NextResponse.json(
+          { error: `Upload mislukt: ${uploadError.message}` },
+          { status: 500 }
+        );
+      }
+    }
+
+    // Get the public URL for HTML
     const { data: urlData } = supabase.storage
       .from('publiek-handboeken')
-      .getPublicUrl(fileName);
+      .getPublicUrl(`${slug}.html`);
 
     return NextResponse.json({
       success: true,
       url: urlData.publicUrl,
+      imageUrlMap,
     });
   } catch (error) {
     console.error('Error uploading public HTML:', error);
@@ -89,16 +138,18 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Delete the file from storage
-    const fileName = `${slug}.html`;
-    const { error: deleteError } = await supabase.storage
+    // Delete all files for this slug (HTML + images folder)
+    const { data: files } = await supabase.storage
       .from('publiek-handboeken')
-      .remove([fileName]);
+      .list(slug);
 
-    if (deleteError) {
-      console.error('Delete error:', deleteError);
-      // Don't fail if file doesn't exist
+    if (files && files.length > 0) {
+      const filesToDelete = files.map(f => `${slug}/${f.name}`);
+      await supabase.storage.from('publiek-handboeken').remove(filesToDelete);
     }
+
+    // Delete the HTML file
+    await supabase.storage.from('publiek-handboeken').remove([`${slug}.html`]);
 
     return NextResponse.json({ success: true });
   } catch (error) {
