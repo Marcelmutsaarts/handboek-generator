@@ -512,15 +512,15 @@ export const generatePublicHTML = (
   if (handboek.cover_url) {
     bodyContent += `<div class="cover-page">
       <img src="${getImageUrl(handboek.cover_url)}" alt="Cover" class="cover-image">
-      <div class="cover-overlay">
-        <h1 class="cover-title">${escapeHtml(handboek.titel)}</h1>
-        ${handboek.beschrijving ? `<p class="cover-description">${escapeHtml(handboek.beschrijving)}</p>` : ''}
-        <p class="cover-meta">
-          ${NIVEAU_LABELS[handboek.niveau] || handboek.niveau} - Leerjaar ${handboek.leerjaar}
-          ${handboek.context ? `<br><em>${escapeHtml(handboek.context)}</em>` : ''}
-        </p>
-      </div>
-    </div>`;
+    </div>
+    <header class="cover-info">
+      <h1 class="cover-title">${escapeHtml(handboek.titel)}</h1>
+      ${handboek.beschrijving ? `<p class="cover-description">${escapeHtml(handboek.beschrijving)}</p>` : ''}
+      <p class="cover-meta">
+        ${NIVEAU_LABELS[handboek.niveau] || handboek.niveau} - Leerjaar ${handboek.leerjaar}
+        ${handboek.context ? `<br><em>${escapeHtml(handboek.context)}</em>` : ''}
+      </p>
+    </header>`;
   } else {
     bodyContent += `<header class="title-page">
       <h1 class="title-main">${escapeHtml(handboek.titel)}</h1>
@@ -607,48 +607,38 @@ export const generatePublicHTML = (
 
     /* Cover page */
     .cover-page {
-      position: relative;
       width: 100%;
-      min-height: 100vh;
       display: flex;
-      align-items: center;
       justify-content: center;
-      background: #1a1a2e;
-      overflow: hidden;
+      background: #0f172a;
     }
     .cover-image {
-      position: absolute;
-      top: 0;
-      left: 0;
       width: 100%;
-      height: 100%;
-      object-fit: cover;
-      z-index: 1;
+      max-height: 80vh;
+      object-fit: contain;
+      display: block;
     }
-    .cover-overlay {
-      position: relative;
-      z-index: 2;
-      text-align: center;
-      color: white;
+    .cover-info {
       padding: 2rem;
-      background: rgba(0, 0, 0, 0.6);
-      border-radius: 1rem;
-      max-width: 80%;
+      text-align: center;
+      background: #ffffff;
+      border-bottom: 1px solid #e5e7eb;
     }
     .cover-title {
       font-size: 2.5rem;
       font-weight: bold;
       margin: 0 0 1rem 0;
-      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+      color: #111827;
     }
     .cover-description {
       font-size: 1.1rem;
       margin: 0 0 1rem 0;
+      color: #4b5563;
     }
     .cover-meta {
       font-size: 1rem;
       margin: 0;
-      opacity: 0.9;
+      color: #6b7280;
     }
 
     /* Title page (no cover) */
