@@ -19,7 +19,7 @@ const LENGTES: { value: Lengte; label: string; description: string; woorden: num
 
 const AFBEELDING_TYPES: { value: AfbeeldingType; label: string; description: string }[] = [
   { value: 'geen', label: 'Geen', description: 'Alleen tekst' },
-  { value: 'stock', label: 'Stockfoto's', description: 'Via Pexels' },
+  { value: 'stock', label: "Stockfoto's", description: 'Via Pexels' },
   { value: 'ai', label: 'AI-gegenereerd', description: 'Via Gemini' },
 ];
 
