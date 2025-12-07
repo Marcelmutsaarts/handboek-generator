@@ -255,17 +255,54 @@ Verwerk dit SUBTIEL in de tekst:
 `
     : '';
 
+  // Template-specifieke afbeeldingsplaatsing
+  const getAfbeeldingPlaatsing = (templateId: string): string => {
+    switch (templateId) {
+      case 'klassiek':
+        return `PLAATSING (5 afbeeldingen):
+1. In sectie "Theorie" - na uitleg van een kernconcept
+2. In sectie "Theorie" - bij een tweede belangrijk begrip
+3. In sectie "Voorbeelden" - bij een concreet voorbeeld
+4. In sectie "Verdieping" of "Opdrachten" - bij praktische toepassing
+5. Aan het einde - samenvattende infographic (wordt automatisch gegenereerd indien ingeschakeld)`;
+      case 'praktisch':
+        return `PLAATSING (5 afbeeldingen):
+1. In sectie "Benodigdheden" of begin "Stap voor stap" - overzicht materialen/tools
+2. In sectie "Stap voor stap" - bij een cruciale tussenstap
+3. In sectie "Stap voor stap" - bij het eindresultaat van de stappen
+4. In sectie "Uitleg" of "Veelgemaakte fouten" - verduidelijkende afbeelding
+5. Aan het einde - samenvattende infographic (wordt automatisch gegenereerd indien ingeschakeld)`;
+      case 'onderzoek':
+        return `PLAATSING (5 afbeeldingen):
+1. In sectie "Onderzoeksvraag" of "Voorkennis" - context van het onderwerp
+2. In sectie "Bronnen & methode" - onderzoeksmethode visualisatie
+3. In sectie "Bevindingen" - belangrijkste ontdekking
+4. In sectie "Bevindingen" - tweede belangrijke bevinding of data
+5. Aan het einde - samenvattende infographic (wordt automatisch gegenereerd indien ingeschakeld)`;
+      case 'toets':
+        return `PLAATSING (5 afbeeldingen):
+1. In sectie "Kernbegrippen" - visualisatie van belangrijk begrip
+2. In sectie "Theorie samengevat" - schema of concept
+3. In sectie "Voorbeeldvragen" - bij een uitgewerkt voorbeeld
+4. In sectie "Oefenopgaven" - bij een oefening
+5. Aan het einde - samenvattende infographic (wordt automatisch gegenereerd indien ingeschakeld)`;
+      default:
+        return `PLAATSING (5 afbeeldingen):
+1. Na de eerste inhoudelijke paragraaf
+2. Bij het eerste belangrijke concept of voorbeeld
+3. Halverwege het hoofdstuk bij nieuwe informatie
+4. Bij praktische toepassing of oefening
+5. Aan het einde - samenvattende infographic (wordt automatisch gegenereerd indien ingeschakeld)`;
+    }
+  };
+
   const afbeeldingenSection = metAfbeeldingen
     ? `
 ## AFBEELDINGEN
-Voeg 4 afbeeldingen toe, GELIJKMATIG VERSPREID over het hele hoofdstuk. Gebruik dit EXACTE formaat:
+Voeg EXACT 4 afbeeldingen toe (de 5e infographic wordt apart gegenereerd). Gebruik dit EXACTE formaat:
 [AFBEELDING: engelse zoekterm]
 
-VERSPREIDING:
-- Verdeel de 4 afbeeldingen evenredig over alle secties van het hoofdstuk
-- Plaats ze bij de inhoud waar ze het meest relevant zijn
-- NIET allemaal aan het begin of eind clusteren
-- Elke afbeelding moet passen bij de tekst die er direct aan voorafgaat
+${getAfbeeldingPlaatsing(template || 'klassiek')}
 
 BELANGRIJKE regels voor de zoekterm:
 - Exact 2-3 Engelse woorden
@@ -273,15 +310,14 @@ BELANGRIJKE regels voor de zoekterm:
 - Combineer het onderwerp met een actie of setting
 - Denk als een fotograaf: wat zou je letterlijk op de foto zien?
 
-Voorbeelden per onderwerp:
-- Onderwerp "fotosynthese": [AFBEELDING: plant sunlight leaves] of [AFBEELDING: greenhouse growing plants]
-- Onderwerp "Franse revolutie": [AFBEELDING: Paris historic buildings] of [AFBEELDING: crowd protest flags]
-- Onderwerp "programmeren": [AFBEELDING: coding laptop screen] of [AFBEELDING: developer typing code]
-- Onderwerp "voeding": [AFBEELDING: healthy meal plate] of [AFBEELDING: vegetables kitchen cooking]
+Voorbeelden:
+- "fotosynthese": [AFBEELDING: plant sunlight leaves]
+- "Franse revolutie": [AFBEELDING: Paris historic buildings]
+- "programmeren": [AFBEELDING: coding laptop screen]
 
-VERMIJD generieke termen zoals: education, learning, student, classroom, school, study, book, teacher (tenzij gecombineerd met iets specifieks)
+VERMIJD: education, learning, student, classroom, school, study, book, teacher
 
-NIET plaatsen direct na: titels, kopjes, Inleiding, Reflectievragen. Plaats EXACT 4 afbeeldingen, gelijkmatig verspreid!
+Plaats EXACT 4 afbeeldingen op de aangegeven plekken, NIET meer, NIET minder!
 `
     : '';
 
