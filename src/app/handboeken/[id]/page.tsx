@@ -8,7 +8,6 @@ import ShareHandboek from '@/components/ShareHandboek';
 import { useAuth } from '@/hooks/useAuth';
 import { createClient } from '@/lib/supabase/client';
 import { Handboek, Hoofdstuk, Afbeelding, getTemplate, HoofdstukPlan } from '@/types';
-import { exportHandboekAsWord, exportHandboekAsHTML, exportHandboekAsMarkdown } from '@/lib/export';
 import StructureEditor from '@/components/StructureEditor';
 import { getApiKeyHeader } from '@/hooks/useApiKey';
 
@@ -171,6 +170,7 @@ export default function HandboekDetailPage() {
     if (!handboek || hoofdstukken.length === 0) return;
     setIsExporting(true);
     try {
+      const { exportHandboekAsWord } = await import('@/lib/export');
       await exportHandboekAsWord(handboek, hoofdstukken, afbeeldingenPerHoofdstuk);
     } catch (err) {
       console.error('Export error:', err);
@@ -179,9 +179,10 @@ export default function HandboekDetailPage() {
     setIsExporting(false);
   };
 
-  const handleExportHTML = () => {
+  const handleExportHTML = async () => {
     if (!handboek || hoofdstukken.length === 0) return;
     try {
+      const { exportHandboekAsHTML } = await import('@/lib/export');
       exportHandboekAsHTML(handboek, hoofdstukken, afbeeldingenPerHoofdstuk);
     } catch (err) {
       console.error('Export error:', err);
@@ -189,9 +190,10 @@ export default function HandboekDetailPage() {
     }
   };
 
-  const handleExportMarkdown = () => {
+  const handleExportMarkdown = async () => {
     if (!handboek || hoofdstukken.length === 0) return;
     try {
+      const { exportHandboekAsMarkdown } = await import('@/lib/export');
       exportHandboekAsMarkdown(handboek, hoofdstukken);
     } catch (err) {
       console.error('Export error:', err);
