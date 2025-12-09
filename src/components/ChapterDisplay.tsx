@@ -2,10 +2,43 @@
 
 import { useMemo, useState } from 'react';
 import type { Paragraph, TextRun as DocxTextRun } from 'docx';
+import katex from 'katex';
 import { ChapterImage } from '@/types';
 
 // Simple cache to avoid reparsing identical markdown fragments
 const markdownCache = new Map<string, string>();
+
+// Render LaTeX formulas using KaTeX
+function renderLatex(text: string): string {
+  // First handle block math ($$...$$)
+  let result = text.replace(/\$\$([^$]+)\$\$/g, (_, formula) => {
+    try {
+      return katex.renderToString(formula.trim(), {
+        displayMode: true,
+        throwOnError: false,
+        strict: false,
+      });
+    } catch {
+      return `<span class="text-red-500">[Formule fout: ${formula}]</span>`;
+    }
+  });
+
+  // Then handle inline math ($...$)
+  // Use negative lookbehind/lookahead to avoid matching $$
+  result = result.replace(/(?<!\$)\$(?!\$)([^$]+)\$(?!\$)/g, (_, formula) => {
+    try {
+      return katex.renderToString(formula.trim(), {
+        displayMode: false,
+        throwOnError: false,
+        strict: false,
+      });
+    } catch {
+      return `<span class="text-red-500">[Formule fout: ${formula}]</span>`;
+    }
+  });
+
+  return result;
+}
 
 interface ChapterDisplayProps {
   content: string;
@@ -88,19 +121,22 @@ export default function ChapterDisplay({
     const cached = markdownCache.get(text);
     if (cached) return cached;
 
-    const parsed = text
+    // First render LaTeX formulas (before other transformations mess with the $ signs)
+    let processed = renderLatex(text);
+
+    const parsed = processed
       // Headers
       .replace(/^### (.*$)/gm, '<h3>$1</h3>')
       .replace(/^## (.*$)/gm, '<h2>$1</h2>')
       .replace(/^# (.*$)/gm, '<h1>$1</h1>')
       // Bold
       .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-      // Italic
-      .replace(/\*(.*?)\*/g, '<em>$1</em>')
+      // Italic (but not inside KaTeX spans which use \mathit etc)
+      .replace(/(?<!\\)\*(?!\*)([^*]+)\*(?!\*)/g, '<em>$1</em>')
       // Numbered lists
       .replace(/^\d+\.\s+(.*$)/gm, '<li>$1</li>')
       // Bullet lists
-      .replace(/^[-ƒ?½]\s+(.*$)/gm, '<li>$1</li>')
+      .replace(/^[-•]\s+(.*$)/gm, '<li>$1</li>')
       // Wrap consecutive li elements in ul/ol
       .replace(/(<li>.*<\/li>\n?)+/g, (match) => {
         const isNumbered = text.includes('1.');
@@ -167,6 +203,7 @@ export default function ChapterDisplay({
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Gegenereerd Hoofdstuk</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
   <style>
     body { font-family: system-ui, sans-serif; max-width: 800px; margin: 0 auto; padding: 2rem; line-height: 1.6; }
     h1 { font-size: 1.875rem; margin-bottom: 1rem; }
@@ -177,6 +214,7 @@ export default function ChapterDisplay({
     figure { margin: 1.5rem 0; }
     .image-caption { font-size: 0.875rem; color: #1e293b; font-style: italic; border-left: 2px solid #3b82f6; padding-left: 0.75rem; margin-top: 0.5rem; }
     .source-caption { font-size: 0.75rem; color: #64748b; margin-top: 0.25rem; }
+    .katex-display { margin: 1rem 0; }
   </style>
 </head>
 <body>
@@ -450,10 +488,68 @@ ${bodyContent}
   );
 }
 
-// Helper function to parse bold and italic in text for docx
+// Convert LaTeX to readable Unicode text for Word export
+const latexToUnicode = (text: string): string => {
+  // Common LaTeX to Unicode mappings
+  const replacements: [RegExp, string][] = [
+    [/\\times/g, '×'],
+    [/\\cdot/g, '·'],
+    [/\\div/g, '÷'],
+    [/\\pm/g, '±'],
+    [/\\leq/g, '≤'],
+    [/\\geq/g, '≥'],
+    [/\\neq/g, '≠'],
+    [/\\approx/g, '≈'],
+    [/\\infty/g, '∞'],
+    [/\\sqrt\{([^}]+)\}/g, '√($1)'],
+    [/\\frac\{([^}]+)\}\{([^}]+)\}/g, '($1)/($2)'],
+    [/\\sum/g, 'Σ'],
+    [/\\prod/g, 'Π'],
+    [/\\int/g, '∫'],
+    [/\\alpha/g, 'α'],
+    [/\\beta/g, 'β'],
+    [/\\gamma/g, 'γ'],
+    [/\\delta/g, 'δ'],
+    [/\\epsilon/g, 'ε'],
+    [/\\theta/g, 'θ'],
+    [/\\lambda/g, 'λ'],
+    [/\\mu/g, 'μ'],
+    [/\\pi/g, 'π'],
+    [/\\sigma/g, 'σ'],
+    [/\\omega/g, 'ω'],
+    [/\\Delta/g, 'Δ'],
+    [/\\Sigma/g, 'Σ'],
+    [/\\Omega/g, 'Ω'],
+    [/\^2/g, '²'],
+    [/\^3/g, '³'],
+    [/\^n/g, 'ⁿ'],
+    [/\^{([^}]+)}/g, '^($1)'],
+    [/_\{([^}]+)\}/g, '_($1)'],
+    [/\\left/g, ''],
+    [/\\right/g, ''],
+    [/\\\\/g, ''],
+  ];
+
+  let result = text;
+  // Remove $...$ and $$...$$ delimiters
+  result = result.replace(/\$\$([^$]+)\$\$/g, '$1');
+  result = result.replace(/\$([^$]+)\$/g, '$1');
+
+  // Apply replacements
+  for (const [pattern, replacement] of replacements) {
+    result = result.replace(pattern, replacement);
+  }
+
+  return result.trim();
+};
+
+// Helper function to parse bold, italic and LaTeX in text for docx
 const parseInlineFormatting = (text: string, TextRunCtor: typeof DocxTextRun): DocxTextRun[] => {
+  // First convert any LaTeX to Unicode
+  const processedText = latexToUnicode(text);
+
   const runs: DocxTextRun[] = [];
-  let remaining = text;
+  let remaining = processedText;
 
   while (remaining.length > 0) {
     // Check for bold
@@ -484,5 +580,5 @@ const parseInlineFormatting = (text: string, TextRunCtor: typeof DocxTextRun): D
     }
   }
 
-  return runs.length > 0 ? runs : [new TextRunCtor({ text })];
+  return runs.length > 0 ? runs : [new TextRunCtor({ text: processedText })];
 };

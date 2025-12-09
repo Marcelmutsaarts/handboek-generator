@@ -1,6 +1,91 @@
 import { Document, Packer, Paragraph, TextRun, HeadingLevel, ImageRun, PageBreak, AlignmentType, VerticalAlign, convertInchesToTwip } from 'docx';
 import { saveAs } from 'file-saver';
+import katex from 'katex';
 import { Handboek, Hoofdstuk, Afbeelding } from '@/types';
+
+// Render LaTeX to HTML using KaTeX
+function renderLatex(text: string): string {
+  // First handle block math ($$...$$)
+  let result = text.replace(/\$\$([^$]+)\$\$/g, (_, formula) => {
+    try {
+      return katex.renderToString(formula.trim(), {
+        displayMode: true,
+        throwOnError: false,
+        strict: false,
+      });
+    } catch {
+      return `<span class="formula-error">[Formule: ${formula}]</span>`;
+    }
+  });
+
+  // Then handle inline math ($...$)
+  result = result.replace(/(?<!\$)\$(?!\$)([^$]+)\$(?!\$)/g, (_, formula) => {
+    try {
+      return katex.renderToString(formula.trim(), {
+        displayMode: false,
+        throwOnError: false,
+        strict: false,
+      });
+    } catch {
+      return `<span class="formula-error">[Formule: ${formula}]</span>`;
+    }
+  });
+
+  return result;
+}
+
+// Convert LaTeX to readable Unicode text for Word export
+function latexToUnicode(text: string): string {
+  const replacements: [RegExp, string][] = [
+    [/\\times/g, '×'],
+    [/\\cdot/g, '·'],
+    [/\\div/g, '÷'],
+    [/\\pm/g, '±'],
+    [/\\leq/g, '≤'],
+    [/\\geq/g, '≥'],
+    [/\\neq/g, '≠'],
+    [/\\approx/g, '≈'],
+    [/\\infty/g, '∞'],
+    [/\\sqrt\{([^}]+)\}/g, '√($1)'],
+    [/\\frac\{([^}]+)\}\{([^}]+)\}/g, '($1)/($2)'],
+    [/\\sum/g, 'Σ'],
+    [/\\prod/g, 'Π'],
+    [/\\int/g, '∫'],
+    [/\\alpha/g, 'α'],
+    [/\\beta/g, 'β'],
+    [/\\gamma/g, 'γ'],
+    [/\\delta/g, 'δ'],
+    [/\\epsilon/g, 'ε'],
+    [/\\theta/g, 'θ'],
+    [/\\lambda/g, 'λ'],
+    [/\\mu/g, 'μ'],
+    [/\\pi/g, 'π'],
+    [/\\sigma/g, 'σ'],
+    [/\\omega/g, 'ω'],
+    [/\\Delta/g, 'Δ'],
+    [/\\Sigma/g, 'Σ'],
+    [/\\Omega/g, 'Ω'],
+    [/\^2/g, '²'],
+    [/\^3/g, '³'],
+    [/\^n/g, 'ⁿ'],
+    [/\^{([^}]+)}/g, '^($1)'],
+    [/_\{([^}]+)\}/g, '_($1)'],
+    [/\\left/g, ''],
+    [/\\right/g, ''],
+    [/\\\\/g, ''],
+  ];
+
+  let result = text;
+  // Remove $...$ and $$...$$ delimiters
+  result = result.replace(/\$\$([^$]+)\$\$/g, '$1');
+  result = result.replace(/\$([^$]+)\$/g, '$1');
+
+  for (const [pattern, replacement] of replacements) {
+    result = result.replace(pattern, replacement);
+  }
+
+  return result.trim();
+}
 
 // Helper to convert image URL to buffer
 export const fetchImageAsBuffer = async (url: string): Promise<ArrayBuffer | null> => {
@@ -24,10 +109,13 @@ export const fetchImageAsBuffer = async (url: string): Promise<ArrayBuffer | nul
   }
 };
 
-// Helper function to parse bold and italic in text
+// Helper function to parse bold, italic and LaTeX in text for Word
 export const parseInlineFormatting = (text: string): TextRun[] => {
+  // First convert LaTeX to Unicode for Word
+  const processedText = latexToUnicode(text);
+
   const runs: TextRun[] = [];
-  let remaining = text;
+  let remaining = processedText;
 
   while (remaining.length > 0) {
     const boldMatch = remaining.match(/\*\*(.+?)\*\*/);
@@ -51,21 +139,24 @@ export const parseInlineFormatting = (text: string): TextRun[] => {
     }
   }
 
-  return runs.length > 0 ? runs : [new TextRun({ text })];
+  return runs.length > 0 ? runs : [new TextRun({ text: processedText })];
 };
 
-// Parse markdown to HTML
+// Parse markdown to HTML (with LaTeX support)
 export const parseMarkdown = (text: string): string => {
   if (!text) return '';
 
-  return text
+  // First render LaTeX formulas
+  let processed = renderLatex(text);
+
+  return processed
     .replace(/^### (.*$)/gm, '<h3>$1</h3>')
     .replace(/^## (.*$)/gm, '<h2>$1</h2>')
     .replace(/^# (.*$)/gm, '<h1>$1</h1>')
     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*(.*?)\*/g, '<em>$1</em>')
+    .replace(/(?<!\\)\*(?!\*)([^*]+)\*(?!\*)/g, '<em>$1</em>')
     .replace(/^\d+\.\s+(.*$)/gm, '<li>$1</li>')
-    .replace(/^[-•*]\s+(.*$)/gm, '<li>$1</li>')
+    .replace(/^[-•]\s+(.*$)/gm, '<li>$1</li>')
     .replace(/(<li>.*<\/li>\n?)+/g, (match) => {
       const isNumbered = text.includes('1.');
       const tag = isNumbered ? 'ol' : 'ul';
@@ -594,6 +685,7 @@ export const generatePublicHTML = (
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${escapeHtml(handboek.titel)}</title>
   <meta name="description" content="${escapeHtml(handboek.beschrijving || `Handboek over ${handboek.titel}`)}">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
   <style>
     * { box-sizing: border-box; }
     body {
@@ -901,9 +993,11 @@ export const exportHandboekAsHTML = (
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${handboek.titel}</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
   <style>
     body { font-family: system-ui, sans-serif; margin: 0; padding: 0; line-height: 1.6; }
     .content-wrapper { max-width: 800px; margin: 0 auto; padding: 2rem; }
+    .katex-display { margin: 1rem 0; }
 
     /* Full-page cover styles */
     .cover-page {
