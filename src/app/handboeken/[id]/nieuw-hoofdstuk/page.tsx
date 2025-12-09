@@ -135,7 +135,7 @@ export default function NieuwHoofdstukPage() {
     }).filter(Boolean);
   };
 
-  const fetchStockImages = async (generatedContent: string) => {
+  const fetchStockImages = async (generatedContent: string, onderwerp: string) => {
     const searchTerms = extractImageTerms(generatedContent);
     if (searchTerms.length === 0) return;
 
@@ -152,7 +152,18 @@ export default function NieuwHoofdstukPage() {
 
       if (response.ok) {
         const data = await response.json();
-        setImages(data.images);
+        const stockImages: ChapterImage[] = data.images || [];
+
+        // Generate captions for stock images (same as AI images)
+        const imagesWithCaptions = await Promise.all(
+          stockImages.map(async (img: ChapterImage, index: number) => {
+            const imageDescription = searchTerms[index] || img.alt || '';
+            const caption = await generateCaption(img.url, imageDescription, onderwerp);
+            return { ...img, caption };
+          })
+        );
+
+        setImages(imagesWithCaptions);
       }
     } catch (err) {
       console.error('Error fetching stock images:', err);
@@ -363,7 +374,7 @@ export default function NieuwHoofdstukPage() {
                 setPageState('result');
 
                 if (afbeeldingType === 'stock') {
-                  fetchStockImages(fullContent);
+                  fetchStockImages(fullContent, onderwerp);
                 } else if (afbeeldingType === 'ai') {
                   fetchAiImages(fullContent, onderwerp, laatstePlaatjeInfographic);
                 }
