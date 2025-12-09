@@ -44,14 +44,25 @@ export async function POST(request: NextRequest) {
           .join(' ');
 
         const query = encodeURIComponent(cleanedTerms);
-        const response = await fetch(
-          `https://api.pexels.com/v1/search?query=${query}&per_page=3&orientation=landscape`,
-          {
-            headers: {
-              Authorization: PEXELS_API_KEY,
-            },
-          }
-        );
+
+        // Add timeout to prevent hanging requests
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+
+        let response: Response;
+        try {
+          response = await fetch(
+            `https://api.pexels.com/v1/search?query=${query}&per_page=3&orientation=landscape`,
+            {
+              headers: {
+                Authorization: PEXELS_API_KEY,
+              },
+              signal: controller.signal,
+            }
+          );
+        } finally {
+          clearTimeout(timeoutId);
+        }
 
         if (!response.ok) {
           console.error(`Pexels API error for "${terms}":`, response.status);

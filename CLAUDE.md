@@ -108,6 +108,8 @@ Alle tabellen hebben RLS policies zodat gebruikers alleen eigen data kunnen zien
 - [x] Preview met voorblad en inhoudsopgave
 - [x] Hoofdstuk bewerken (handmatig)
 - [x] AI herschrijven van (delen van) hoofdstukken
+- [x] Publiek delen met SSR voor snelle load
+- [x] Image compressie en parallelle uploads
 
 ## Afbeelding Generatie
 
@@ -151,3 +153,27 @@ Gebruikers moeten hun eigen OpenRouter API key invoeren via de instellingen knop
 - **GitHub**: https://github.com/Marcelmutsaarts/handboek-generator
 - **Hosting**: Vercel (configureer environment variables)
 - **Database**: Supabase (voer SQL migraties uit)
+
+## Performance & Stabiliteit
+
+### Geïmplementeerde optimalisaties
+- **SSR voor publieke pagina's**: `/publiek/[slug]` is server-side rendered, geen JavaScript nodig
+- **Parallelle image uploads**: Uploads gaan in batches van 3 tegelijk (i.p.v. sequentieel)
+- **Image compressie**: Afbeeldingen worden gecomprimeerd voor upload (max 1920px, 80% quality)
+- **Retry-logica**: Alle uploads hebben 3 pogingen met exponential backoff
+- **API timeouts**: Alle externe API calls hebben timeouts:
+  - Tekst generatie: 120s
+  - Image generatie: 60s
+  - Cover generatie: 60s
+  - Rewrite: 60s
+  - Structure: 30s
+  - Caption: 15s
+  - Pexels: 10s
+- **Caching**: Publieke HTML gecached voor 60s, images voor 1 jaar
+
+### Publiek delen flow
+1. Afbeeldingen worden parallel gecomprimeerd en geüpload naar Supabase Storage
+2. HTML wordt gegenereerd met Storage URLs (niet base64)
+3. HTML wordt geüpload naar Storage
+4. Database slaat alleen `is_publiek` en `publieke_slug` op (geen HTML meer)
+5. Publieke pagina fetcht HTML direct van Storage (SSR, geen client JS nodig)

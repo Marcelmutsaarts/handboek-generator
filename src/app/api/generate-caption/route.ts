@@ -46,26 +46,36 @@ VOORBEELD FORMATEN:
 
 Geef ALLEEN de caption terug, zonder extra uitleg of aanhalingstekens.`;
 
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': 'https://handboek-generator.app',
-        'X-Title': 'Handboek Generator',
-      },
-      body: JSON.stringify({
-        model: CAPTION_MODEL,
-        messages: [
-          {
-            role: 'user',
-            content: captionPrompt,
-          },
-        ],
-        max_tokens: 150,
-        temperature: 0.7,
-      }),
-    });
+    // Add timeout for caption generation
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
+
+    let response: Response;
+    try {
+      response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': 'https://handboek-generator.app',
+          'X-Title': 'Handboek Generator',
+        },
+        body: JSON.stringify({
+          model: CAPTION_MODEL,
+          messages: [
+            {
+              role: 'user',
+              content: captionPrompt,
+            },
+          ],
+          max_tokens: 150,
+          temperature: 0.7,
+        }),
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeoutId);
+    }
 
     if (!response.ok) {
       const error = await response.text();
@@ -84,6 +94,11 @@ Geef ALLEEN de caption terug, zonder extra uitleg of aanhalingstekens.`;
 
   } catch (error) {
     console.error('Caption generation error:', error);
+
+    if (error instanceof Error && error.name === 'AbortError') {
+      return NextResponse.json({ error: 'Caption generatie duurde te lang' }, { status: 504 });
+    }
+
     return NextResponse.json({ error: 'Caption generatie mislukt' }, { status: 500 });
   }
 }

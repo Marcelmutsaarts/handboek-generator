@@ -75,27 +75,44 @@ export async function POST(request: NextRequest) {
       ? buildPromptWithContext(formData, eerdereHoofdstukken)
       : buildPrompt(formData);
 
-    // Create streaming response via OpenRouter
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': 'https://handboek-generator.app',
-        'X-Title': 'Handboek Generator',
-      },
-      body: JSON.stringify({
-        model: MODEL,
-        messages: [
-          {
-            role: 'user',
-            content: prompt,
-          },
-        ],
-        max_tokens: 8192,
-        stream: true,
-      }),
-    });
+    // Create streaming response via OpenRouter with timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 min timeout for text generation
+
+    let response: Response;
+    try {
+      response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': 'https://handboek-generator.app',
+          'X-Title': 'Handboek Generator',
+        },
+        body: JSON.stringify({
+          model: MODEL,
+          messages: [
+            {
+              role: 'user',
+              content: prompt,
+            },
+          ],
+          max_tokens: 8192,
+          stream: true,
+        }),
+        signal: controller.signal,
+      });
+    } catch (error) {
+      clearTimeout(timeoutId);
+      if (error instanceof Error && error.name === 'AbortError') {
+        return new Response(JSON.stringify({ error: 'Generatie duurde te lang. Probeer het opnieuw.' }), {
+          status: 504,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+      throw error;
+    }
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       const error = await response.text();

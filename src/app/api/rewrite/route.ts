@@ -49,21 +49,39 @@ BELANGRIJKE REGELS:
 
 Geef alleen de herschreven tekst terug, zonder uitleg of commentaar.`;
 
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': 'https://handboek-generator.app',
-        'X-Title': 'Handboek Generator',
-      },
-      body: JSON.stringify({
-        model: MODEL,
-        messages: [{ role: 'user', content: prompt }],
-        max_tokens: 4096,
-        stream: true,
-      }),
-    });
+    // Add timeout for rewrite requests
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout
+
+    let response: Response;
+    try {
+      response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': 'https://handboek-generator.app',
+          'X-Title': 'Handboek Generator',
+        },
+        body: JSON.stringify({
+          model: MODEL,
+          messages: [{ role: 'user', content: prompt }],
+          max_tokens: 4096,
+          stream: true,
+        }),
+        signal: controller.signal,
+      });
+    } catch (error) {
+      clearTimeout(timeoutId);
+      if (error instanceof Error && error.name === 'AbortError') {
+        return new Response(
+          JSON.stringify({ error: 'Herschrijven duurde te lang. Probeer het opnieuw.' }),
+          { status: 504, headers: { 'Content-Type': 'application/json' } }
+        );
+      }
+      throw error;
+    }
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       const error = await response.text();

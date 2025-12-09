@@ -108,28 +108,38 @@ Stijlvereisten:
     // Use 1:1 aspect ratio for infographics (poster format), 16:9 for regular images
     const aspectRatio = isInfographic ? '1:1' : '16:9';
 
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': 'https://handboek-generator.app',
-        'X-Title': 'Handboek Generator',
-      },
-      body: JSON.stringify({
-        model: selectedModel,
-        messages: [
-          {
-            role: 'user',
-            content: imagePrompt,
-          },
-        ],
-        modalities: ['image', 'text'],
-        image_config: {
-          aspect_ratio: aspectRatio,
+    // Add timeout to prevent hanging requests
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout for image generation
+
+    let response: Response;
+    try {
+      response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': 'https://handboek-generator.app',
+          'X-Title': 'Handboek Generator',
         },
-      }),
-    });
+        body: JSON.stringify({
+          model: selectedModel,
+          messages: [
+            {
+              role: 'user',
+              content: imagePrompt,
+            },
+          ],
+          modalities: ['image', 'text'],
+          image_config: {
+            aspect_ratio: aspectRatio,
+          },
+        }),
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeoutId);
+    }
 
     if (!response.ok) {
       const error = await response.text();
@@ -157,6 +167,15 @@ Stijlvereisten:
 
   } catch (error) {
     console.error('Image generation error:', error);
-    return NextResponse.json({ error: 'Image generation failed' }, { status: 500 });
+
+    // Better error messages based on error type
+    if (error instanceof Error) {
+      if (error.name === 'AbortError') {
+        return NextResponse.json({ error: 'Afbeelding generatie duurde te lang. Probeer het opnieuw.' }, { status: 504 });
+      }
+      return NextResponse.json({ error: `Afbeelding generatie mislukt: ${error.message}` }, { status: 500 });
+    }
+
+    return NextResponse.json({ error: 'Afbeelding generatie mislukt' }, { status: 500 });
   }
 }

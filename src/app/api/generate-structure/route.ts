@@ -87,21 +87,31 @@ Geef je antwoord als een JSON array. Geen andere tekst, alleen de JSON:
 
 Zorg dat de JSON geldig is en direct te parsen.`;
 
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': 'https://handboek-generator.app',
-        'X-Title': 'Handboek Generator',
-      },
-      body: JSON.stringify({
-        model: MODEL,
-        messages: [{ role: 'user', content: prompt }],
-        max_tokens: 4096,
-        temperature: 0.7,
-      }),
-    });
+    // Add timeout for structure generation
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
+
+    let response: Response;
+    try {
+      response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': 'https://handboek-generator.app',
+          'X-Title': 'Handboek Generator',
+        },
+        body: JSON.stringify({
+          model: MODEL,
+          messages: [{ role: 'user', content: prompt }],
+          max_tokens: 4096,
+          temperature: 0.7,
+        }),
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeoutId);
+    }
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -155,6 +165,14 @@ Zorg dat de JSON geldig is en direct te parsen.`;
 
   } catch (error) {
     console.error('Generate structure error:', error);
+
+    if (error instanceof Error && error.name === 'AbortError') {
+      return NextResponse.json(
+        { error: 'Structuur generatie duurde te lang. Probeer het opnieuw.' },
+        { status: 504 }
+      );
+    }
+
     return NextResponse.json(
       { error: 'Er ging iets mis bij het genereren van de structuur' },
       { status: 500 }
