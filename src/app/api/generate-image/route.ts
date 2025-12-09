@@ -112,34 +112,31 @@ Stijlvereisten:
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout for image generation
 
-    let response: Response;
-    try {
-      response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-          'HTTP-Referer': 'https://handboek-generator.app',
-          'X-Title': 'Handboek Generator',
-        },
-        body: JSON.stringify({
-          model: selectedModel,
-          messages: [
-            {
-              role: 'user',
-              content: imagePrompt,
-            },
-          ],
-          modalities: ['image', 'text'],
-          image_config: {
-            aspect_ratio: aspectRatio,
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+        'HTTP-Referer': 'https://handboek-generator.app',
+        'X-Title': 'Handboek Generator',
+      },
+      body: JSON.stringify({
+        model: selectedModel,
+        messages: [
+          {
+            role: 'user',
+            content: imagePrompt,
           },
-        }),
-        signal: controller.signal,
-      });
-    } finally {
-      clearTimeout(timeoutId);
-    }
+        ],
+        modalities: ['image', 'text'],
+        image_config: {
+          aspect_ratio: aspectRatio,
+        },
+      }),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       const error = await response.text();

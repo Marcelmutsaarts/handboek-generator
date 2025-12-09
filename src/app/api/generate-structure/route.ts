@@ -91,42 +91,48 @@ Zorg dat de JSON geldig is en direct te parsen.`;
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
 
-    let response: Response;
-    try {
-      response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-          'HTTP-Referer': 'https://handboek-generator.app',
-          'X-Title': 'Handboek Generator',
-        },
-        body: JSON.stringify({
-          model: MODEL,
-          messages: [{ role: 'user', content: prompt }],
-          max_tokens: 4096,
-          temperature: 0.7,
-        }),
-        signal: controller.signal,
-      });
-    } finally {
-      clearTimeout(timeoutId);
-    }
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+        'HTTP-Referer': 'https://handboek-generator.app',
+        'X-Title': 'Handboek Generator',
+      },
+      body: JSON.stringify({
+        model: MODEL,
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: 4096,
+        temperature: 0.7,
+      }),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       const errorText = await response.text();
       console.error('OpenRouter error:', response.status, errorText);
-      // Return the actual error from OpenRouter for debugging
+
+      // Parse error and provide user-friendly message
       let errorMessage = 'Structuur generatie mislukt';
       try {
         const errorJson = JSON.parse(errorText);
-        if (errorJson.error?.message) {
-          errorMessage = errorJson.error.message;
+        const msg = errorJson.error?.message || '';
+
+        if (msg.includes('Key limit exceeded') || msg.includes('rate limit')) {
+          errorMessage = 'API limiet bereikt. Wacht even of check je OpenRouter instellingen op https://openrouter.ai/settings/keys';
+        } else if (msg.includes('invalid_api_key') || msg.includes('Invalid API')) {
+          errorMessage = 'Ongeldige API key. Controleer je OpenRouter API key in de instellingen.';
+        } else if (msg.includes('insufficient_quota') || msg.includes('billing')) {
+          errorMessage = 'Onvoldoende tegoed. Voeg krediet toe op https://openrouter.ai/credits';
+        } else if (msg) {
+          errorMessage = msg;
         }
       } catch {
         // Use default message
       }
-      return NextResponse.json({ error: errorMessage }, { status: 500 });
+      return NextResponse.json({ error: errorMessage }, { status: response.status });
     }
 
     const data = await response.json();

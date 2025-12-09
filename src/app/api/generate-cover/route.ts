@@ -61,34 +61,31 @@ Maak een cover die leerlingen en docenten aanspreekt en het onderwerp visueel sa
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout for image generation
 
-    let response: Response;
-    try {
-      response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-          'HTTP-Referer': 'https://handboek-generator.app',
-          'X-Title': 'Handboek Generator',
-        },
-        body: JSON.stringify({
-          model: COVER_MODEL,
-          messages: [
-            {
-              role: 'user',
-              content: coverPrompt,
-            },
-          ],
-          modalities: ['image', 'text'],
-          image_config: {
-            aspect_ratio: '3:4', // Portret/boekformaat
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+        'HTTP-Referer': 'https://handboek-generator.app',
+        'X-Title': 'Handboek Generator',
+      },
+      body: JSON.stringify({
+        model: COVER_MODEL,
+        messages: [
+          {
+            role: 'user',
+            content: coverPrompt,
           },
-        }),
-        signal: controller.signal,
-      });
-    } finally {
-      clearTimeout(timeoutId);
-    }
+        ],
+        modalities: ['image', 'text'],
+        image_config: {
+          aspect_ratio: '3:4', // Portret/boekformaat
+        },
+      }),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       const error = await response.text();
