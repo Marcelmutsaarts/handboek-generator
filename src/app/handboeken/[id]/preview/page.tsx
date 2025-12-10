@@ -249,8 +249,7 @@ export default function HandboekPreviewPage() {
                 href={`#hoofdstuk-${index + 1}`}
                 className="toc-item"
               >
-                <span className="toc-number">{index + 1}</span>
-                <span className="toc-chapter-title">{hoofdstuk.titel}</span>
+                <span className="toc-chapter-title">Hoofdstuk {index + 1}: {hoofdstuk.titel}</span>
                 <span className="toc-dots"></span>
               </a>
             ))}
@@ -383,11 +382,6 @@ export default function HandboekPreviewPage() {
 
         .toc-item:hover {
           color: #2563eb;
-        }
-
-        .toc-number {
-          font-weight: 600;
-          min-width: 2rem;
         }
 
         .toc-chapter-title {

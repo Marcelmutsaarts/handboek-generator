@@ -490,7 +490,7 @@ export const exportHandboekAsWord = async (
       new Paragraph({
         children: [
           new TextRun({
-            text: `${index + 1}. ${hoofdstuk.titel}`,
+            text: `Hoofdstuk ${index + 1}: ${hoofdstuk.titel}`,
             size: 24,
           }),
         ],
@@ -633,7 +633,7 @@ export const generatePublicHTML = (
     bodyContent += `<nav class="toc">
       <h2>Inhoudsopgave</h2>
       <ol>
-        ${hoofdstukken.map((h, i) => `<li><a href="#hoofdstuk-${i + 1}">${escapeHtml(h.titel)}</a></li>`).join('')}
+        ${hoofdstukken.map((h, i) => `<li><a href="#hoofdstuk-${i + 1}">Hoofdstuk ${i + 1}: ${escapeHtml(h.titel)}</a></li>`).join('')}
       </ol>
     </nav>`;
   }
@@ -948,7 +948,7 @@ export const exportHandboekAsHTML = (
   bodyContent += `<nav>
     <h2 style="font-size: 1.25rem; margin-bottom: 1rem;">Inhoudsopgave</h2>
     <ol style="padding-left: 1.5rem;">
-      ${hoofdstukken.map((h, i) => `<li style="margin-bottom: 0.5rem;"><a href="#hoofdstuk-${i + 1}" style="color: #3b82f6; text-decoration: none;">${h.titel}</a></li>`).join('')}
+      ${hoofdstukken.map((h, i) => `<li style="margin-bottom: 0.5rem;"><a href="#hoofdstuk-${i + 1}" style="color: #3b82f6; text-decoration: none;">Hoofdstuk ${i + 1}: ${h.titel}</a></li>`).join('')}
     </ol>
   </nav>`;
 
@@ -1119,7 +1119,7 @@ export const exportHandboekAsMarkdown = (
   // Table of contents
   content += '## Inhoudsopgave\n\n';
   hoofdstukken.forEach((h, i) => {
-    content += `${i + 1}. ${h.titel}\n`;
+    content += `Hoofdstuk ${i + 1}: ${h.titel}\n`;
   });
   content += '\n---\n\n';
 
