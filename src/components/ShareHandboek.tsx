@@ -78,6 +78,21 @@ function base64ToBlob(base64: string): { blob: Blob; mimeType: string } | null {
   }
 }
 
+// Fetch external image and convert to blob
+async function fetchExternalImage(url: string): Promise<{ blob: Blob; mimeType: string } | null> {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) return null;
+
+    const blob = await response.blob();
+    const mimeType = blob.type || 'image/jpeg';
+    return { blob, mimeType };
+  } catch (error) {
+    console.error('Failed to fetch external image:', error);
+    return null;
+  }
+}
+
 // Upload with retry logic
 async function uploadWithRetry(
   supabase: ReturnType<typeof createClient>,
@@ -186,22 +201,32 @@ export default function ShareHandboek({
       const newSlug = generateSlug();
 
       try {
-        // Stap 1: Verzamel alle base64 afbeeldingen
+        // Stap 1: Verzamel alle afbeeldingen (base64 én externe URLs)
         setProgress('Afbeeldingen voorbereiden...');
 
-        const allImages: { url: string; id: string; index: number }[] = [];
+        const allImages: { url: string; id: string; index: number; isBase64: boolean }[] = [];
 
         // Cover afbeelding
-        if (handboek.cover_url?.startsWith('data:')) {
-          allImages.push({ url: handboek.cover_url, id: 'cover', index: 0 });
+        if (handboek.cover_url) {
+          allImages.push({
+            url: handboek.cover_url,
+            id: 'cover',
+            index: 0,
+            isBase64: handboek.cover_url.startsWith('data:')
+          });
         }
 
-        // Hoofdstuk afbeeldingen
+        // Hoofdstuk afbeeldingen (inclusief externe URLs zoals Pexels)
         let imgIndex = 1;
         Object.values(afbeeldingenPerHoofdstuk).forEach((afbeeldingen) => {
           afbeeldingen.forEach((afb) => {
-            if (afb.url.startsWith('data:')) {
-              allImages.push({ url: afb.url, id: afb.id, index: imgIndex++ });
+            if (afb.url) {
+              allImages.push({
+                url: afb.url,
+                id: afb.id,
+                index: imgIndex++,
+                isBase64: afb.url.startsWith('data:')
+              });
             }
           });
         });
@@ -222,9 +247,16 @@ export default function ShareHandboek({
             const results = await Promise.all(
               batch.map(async (imgData): Promise<UploadResult> => {
                 try {
-                  // Compress image first
-                  const compressed = await compressImage(imgData.url);
-                  const converted = base64ToBlob(compressed);
+                  let converted: { blob: Blob; mimeType: string } | null = null;
+
+                  if (imgData.isBase64) {
+                    // Base64 image: compress and convert
+                    const compressed = await compressImage(imgData.url);
+                    converted = base64ToBlob(compressed);
+                  } else {
+                    // External URL (Pexels, etc.): fetch and convert to blob
+                    converted = await fetchExternalImage(imgData.url);
+                  }
 
                   if (!converted) {
                     return { originalUrl: imgData.url, publicUrl: null, error: 'Conversie mislukt' };
