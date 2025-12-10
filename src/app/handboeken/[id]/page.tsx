@@ -12,6 +12,8 @@ import StructureEditor from '@/components/StructureEditor';
 import { getApiKeyHeader } from '@/hooks/useApiKey';
 
 const NIVEAU_LABELS: Record<string, string> = {
+  po_onder: 'Basisschool onderbouw',
+  po_boven: 'Basisschool bovenbouw',
   vmbo: 'VMBO',
   havo: 'HAVO',
   vwo: 'VWO',

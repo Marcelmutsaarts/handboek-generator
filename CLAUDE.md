@@ -76,6 +76,8 @@ afbeeldingen (
 Alle tabellen hebben RLS policies zodat gebruikers alleen eigen data kunnen zien/bewerken.
 
 ## Niveaus & Leerjaren
+- Basisschool onderbouw (4-8 jaar) - Groep 1-4, zeer eenvoudige taal, speels
+- Basisschool bovenbouw (8-12 jaar) - Groep 5-8, eenvoudige taal, concreet
 - VMBO (12-16 jaar) - Jaar 1-4, eenvoudige taal
 - HAVO (12-17 jaar) - Jaar 1-5, toegankelijk met nuance
 - VWO (12-18 jaar) - Jaar 1-6, complex, kritisch denken

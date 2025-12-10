@@ -1,6 +1,30 @@
 import { FormData, TemplateType, TemplateSection, getTemplate, TEMPLATES, WOORDEN_PER_LENGTE } from '@/types';
 
 const NIVEAU_BESCHRIJVING: Record<string, { doelgroep: string; taalrichtlijnen: string }> = {
+  po_onder: {
+    doelgroep: 'basisschoolleerlingen onderbouw (groep 1-4, 4-8 jaar)',
+    taalrichtlijnen: `- Gebruik zeer eenvoudige, korte zinnen (max 8 woorden)
+- Alleen bekende woorden uit de directe leefwereld van jonge kinderen
+- Veel herhaling en ritme in de tekst
+- Concrete voorbeelden: speelgoed, dieren, familie, school, natuur
+- Spreek de lezer direct aan met "jij" en "je"
+- Gebruik speelse, vrolijke toon
+- Veel visuele beschrijvingen die kinderen kunnen tekenen
+- Eenvoudige vragen om te controleren of ze het begrijpen
+- Korte alinea's van 2-3 zinnen maximum`,
+  },
+  po_boven: {
+    doelgroep: 'basisschoolleerlingen bovenbouw (groep 5-8, 8-12 jaar)',
+    taalrichtlijnen: `- Eenvoudige, heldere taal met korte zinnen (max 12 woorden)
+- Nieuwe woorden altijd direct uitleggen
+- Concrete voorbeelden uit het dagelijks leven van kinderen (hobby's, vrienden, school, familie)
+- Vermijd abstracte concepten of leg ze uit met voorbeelden
+- Gebruik actieve zinnen en spreek de lezer aan met "je"
+- Maak het leuk en interessant met weetjes en verrassende feiten
+- Gebruik lijstjes en opsommingen voor overzicht
+- Stel vragen om kinderen aan het denken te zetten
+- Korte paragrafen voor goede leesbaarheid`,
+  },
   vmbo: {
     doelgroep: 'vmbo-leerlingen (12-16 jaar)',
     taalrichtlijnen: `- Gebruik eenvoudige, alledaagse taal
@@ -65,6 +89,18 @@ const NIVEAU_BESCHRIJVING: Record<string, { doelgroep: string; taalrichtlijnen: 
 
 // Leerjaar-specifieke aanpassingen per niveau
 const LEERJAAR_AANPASSINGEN: Record<string, Record<number, string>> = {
+  po_onder: {
+    1: 'Dit is groep 1 (4-5 jaar). Kinderen leren nog lezen. Focus op luisteren, kijken en doen. Zeer korte zinnen, veel herhaling, speels.',
+    2: 'Dit is groep 2 (5-6 jaar). Kinderen beginnen met letters. Houd tekst zeer eenvoudig. Focus op begrip door voorlezen.',
+    3: 'Dit is groep 3 (6-7 jaar). Kinderen leren lezen. Gebruik korte woorden en zinnen. Veel plaatjes en concrete voorbeelden.',
+    4: 'Dit is groep 4 (7-8 jaar). Kinderen kunnen eenvoudige teksten lezen. Korte zinnen, bekende woorden, veel herhaling.',
+  },
+  po_boven: {
+    5: 'Dit is groep 5 (8-9 jaar). Kinderen kunnen zelfstandig lezen. Introduceer nieuwe begrippen met uitleg. Houd het concreet.',
+    6: 'Dit is groep 6 (9-10 jaar). Kinderen hebben meer leeservaring. Er mag wat meer tekst, maar blijf helder en toegankelijk.',
+    7: 'Dit is groep 7 (10-11 jaar). Kinderen bereiden zich voor op voortgezet onderwijs. Introduceer wat meer diepgang, maar blijf concreet.',
+    8: 'Dit is groep 8 (11-12 jaar). Laatste jaar basisschool. Kinderen kunnen langere teksten aan. Goede voorbereiding op VO-niveau.',
+  },
   vmbo: {
     1: 'Dit is leerjaar 1 (brugklas). Focus op basiskennis en oriëntatie. Houd het simpel en toegankelijk. De leerlingen komen net van de basisschool.',
     2: 'Dit is leerjaar 2. Bouw voort op basiskennis uit leerjaar 1. Er mag iets meer diepgang in, maar blijf concreet.',

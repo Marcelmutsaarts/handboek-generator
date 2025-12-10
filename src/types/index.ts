@@ -1,4 +1,4 @@
-export type Niveau = 'vmbo' | 'havo' | 'vwo' | 'mbo' | 'hbo' | 'uni';
+export type Niveau = 'po_onder' | 'po_boven' | 'vmbo' | 'havo' | 'vwo' | 'mbo' | 'hbo' | 'uni';
 export type Lengte = 'kort' | 'medium' | 'lang';
 export type AfbeeldingType = 'geen' | 'stock' | 'ai';
 export type TemplateType = 'klassiek' | 'praktisch' | 'onderzoek' | 'toets' | 'custom';
@@ -94,6 +94,8 @@ export const getTemplate = (id: TemplateType): Template | undefined => {
 
 // Leerjaren per niveau
 export const LEERJAREN_PER_NIVEAU: Record<Niveau, number[]> = {
+  po_onder: [1, 2, 3, 4], // Groep 1-4 (4-8 jaar)
+  po_boven: [5, 6, 7, 8], // Groep 5-8 (8-12 jaar)
   vmbo: [1, 2, 3, 4],
   havo: [1, 2, 3, 4, 5],
   vwo: [1, 2, 3, 4, 5, 6],

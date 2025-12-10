@@ -17,6 +17,8 @@ interface GenerateStructureRequest {
 }
 
 const NIVEAU_CONTEXT: Record<Niveau, string> = {
+  po_onder: 'basisschoolleerlingen onderbouw (groep 1-4, 4-8 jaar), zeer eenvoudig en speels',
+  po_boven: 'basisschoolleerlingen bovenbouw (groep 5-8, 8-12 jaar), eenvoudig en concreet',
   vmbo: 'vmbo-leerlingen (12-16 jaar), praktisch en toegankelijk',
   havo: 'havo-leerlingen (12-17 jaar), gebalanceerd theoretisch en praktisch',
   vwo: 'vwo-leerlingen (12-18 jaar), diepgaand en academisch voorbereidend',

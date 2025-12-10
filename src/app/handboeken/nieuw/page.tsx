@@ -12,6 +12,8 @@ import TemplateSelector from '@/components/TemplateSelector';
 import StructureEditor from '@/components/StructureEditor';
 
 const NIVEAUS: { value: Niveau; label: string; description: string }[] = [
+  { value: 'po_onder', label: 'Basisschool onderbouw', description: 'groep 1-4' },
+  { value: 'po_boven', label: 'Basisschool bovenbouw', description: 'groep 5-8' },
   { value: 'vmbo', label: 'VMBO', description: '12-16 jaar' },
   { value: 'havo', label: 'HAVO', description: '12-17 jaar' },
   { value: 'vwo', label: 'VWO', description: '12-18 jaar' },

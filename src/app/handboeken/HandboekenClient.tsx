@@ -5,6 +5,8 @@ import Header from '@/components/Header';
 import { Handboek } from '@/types';
 
 const NIVEAU_LABELS: Record<string, string> = {
+  po_onder: 'Basisschool onderbouw',
+  po_boven: 'Basisschool bovenbouw',
   vmbo: 'VMBO',
   havo: 'HAVO',
   vwo: 'VWO',
