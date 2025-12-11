@@ -968,77 +968,73 @@ export default function NieuwHoofdstukPage() {
               </div>
             )}
 
-            {/* Quality check & Source verification & Save buttons */}
+            {/* Action buttons */}
             {pageState === 'result' && !isStreaming && !isLoadingImages && (
               <>
-                {/* Quality check button */}
-                {!savedHoofdstukId && (
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-center justify-between">
-                    <div>
-                      <div className="text-blue-700 text-sm font-medium">Kwaliteit controleren?</div>
-                      <div className="text-blue-600 text-xs mt-0.5">Check op bias, helderheid, didactiek en niveau-geschiktheid</div>
-                    </div>
-                    <button
-                      onClick={handleQualityCheck}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm flex items-center gap-2"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      Kwaliteit controleren
-                    </button>
-                  </div>
-                )}
+                {/* Combined action bar with optional checks and save */}
+                <div className="bg-white border border-gray-200 rounded-lg p-4">
+                  {!savedHoofdstukId ? (
+                    <div className="flex items-center justify-between gap-4">
+                      <span className="text-gray-700 text-sm font-medium">Hoofdstuk gegenereerd</span>
+                      <div className="flex items-center gap-2">
+                        {/* Quality check button - compact */}
+                        <button
+                          onClick={handleQualityCheck}
+                          className="px-3 py-1.5 bg-white border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors text-xs flex items-center gap-1.5"
+                          title="Check op bias, helderheid, didactiek en niveau-geschiktheid"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          Kwaliteit
+                        </button>
 
-                {/* Source verification button (only if metBronnen is enabled) */}
-                {!savedHoofdstukId && metBronnen && (
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-center justify-between">
-                    <div>
-                      <div className="text-green-700 text-sm font-medium">Bronnen verifiëren?</div>
-                      <div className="text-green-600 text-xs mt-0.5">Controleer of de bronnen echt bestaan en bereikbaar zijn</div>
-                    </div>
-                    <button
-                      onClick={handleVerifySources}
-                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm flex items-center gap-2"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      Bronnen verifiëren
-                    </button>
-                  </div>
-                )}
+                        {/* Source verification button - compact (only if metBronnen is enabled) */}
+                        {metBronnen && (
+                          <button
+                            onClick={handleVerifySources}
+                            className="px-3 py-1.5 bg-white border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors text-xs flex items-center gap-1.5"
+                            title="Controleer of de bronnen echt bestaan en bereikbaar zijn"
+                          >
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                            </svg>
+                            Bronnen
+                          </button>
+                        )}
 
-                {/* Save button */}
-                <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-center justify-between">
-                  {savedHoofdstukId ? (
-                    <>
-                      <span className="text-green-700 text-sm">Hoofdstuk opgeslagen!</span>
+                        {/* Save button - prominent */}
+                        <button
+                          onClick={handleSave}
+                          disabled={isSaving}
+                          className="px-4 py-1.5 bg-primary text-white rounded-md hover:bg-primary-hover transition-colors text-sm font-medium disabled:opacity-50 flex items-center gap-2"
+                        >
+                          {isSaving ? (
+                            <>
+                              <div className="animate-spin h-3.5 w-3.5 border-2 border-white border-t-transparent rounded-full"></div>
+                              Opslaan...
+                            </>
+                          ) : (
+                            <>
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                              </svg>
+                              Opslaan
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between">
+                      <span className="text-green-700 text-sm font-medium">✓ Hoofdstuk opgeslagen!</span>
                       <Link
                         href={`/handboeken/${handboekId}`}
-                        className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
+                        className="px-4 py-1.5 bg-primary text-white rounded-md hover:bg-primary-hover transition-colors text-sm"
                       >
                         Terug naar handboek
                       </Link>
-                    </>
-                  ) : (
-                    <>
-                      <span className="text-green-700 text-sm">Hoofdstuk gegenereerd! Wil je het opslaan?</span>
-                      <button
-                        onClick={handleSave}
-                        disabled={isSaving}
-                        className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm disabled:opacity-50 flex items-center gap-2"
-                      >
-                        {isSaving ? (
-                          <>
-                            <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
-                            Opslaan...
-                          </>
-                        ) : (
-                          'Opslaan in handboek'
-                        )}
-                      </button>
-                    </>
+                    </div>
                   )}
                 </div>
               </>
