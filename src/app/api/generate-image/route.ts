@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// Use Flux for image generation via OpenRouter
-const IMAGE_MODEL = 'black-forest-labs/flux-1.1-pro';
-const INFOGRAPHIC_MODEL = 'black-forest-labs/flux-1.1-pro';
+// BELANGRIJK: NOOIT AANPASSEN - Altijd Gemini gebruiken!
+const IMAGE_MODEL = 'google/gemini-2.5-flash-image';
+const INFOGRAPHIC_MODEL = 'google/gemini-3-pro-image-preview';
 
 // Get API key from request header (user's key) - no fallback to env
 function getApiKey(request: NextRequest): string | null {
@@ -129,6 +129,10 @@ Stijlvereisten:
             content: imagePrompt,
           },
         ],
+        modalities: ['image', 'text'],
+        image_config: {
+          aspect_ratio: aspectRatio,
+        },
       }),
       signal: controller.signal,
     });
@@ -142,18 +146,14 @@ Stijlvereisten:
     }
 
     const data = await response.json();
+    const message = data.choices?.[0]?.message;
 
-    // Flux returns image URL in the content
-    const content = data.choices?.[0]?.message?.content;
-
-    if (typeof content === 'string') {
-      // Extract image URL from markdown format or direct URL
-      const urlMatch = content.match(/!\[.*?\]\((https?:\/\/[^\)]+)\)/);
-      const imageUrl = urlMatch ? urlMatch[1] : (content.startsWith('http') ? content : null);
-
-      if (imageUrl) {
+    // Check for images in the response
+    if (message?.images && Array.isArray(message.images) && message.images.length > 0) {
+      const imageData = message.images[0] as ImageResponse;
+      if (imageData.image_url?.url) {
         return NextResponse.json({
-          imageUrl: imageUrl,
+          imageUrl: imageData.image_url.url,
           alt: prompt
         });
       }

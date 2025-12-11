@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const COVER_MODEL = 'black-forest-labs/flux-1.1-pro';
+// BELANGRIJK: NOOIT AANPASSEN - Altijd Gemini gebruiken!
+const COVER_MODEL = 'google/gemini-3-pro-image-preview';
 
 function getApiKey(request: NextRequest): string | null {
   return request.headers.get('X-OpenRouter-Key');
@@ -77,6 +78,10 @@ Maak een cover die leerlingen en docenten aanspreekt en het onderwerp visueel sa
             content: coverPrompt,
           },
         ],
+        modalities: ['image', 'text'],
+        image_config: {
+          aspect_ratio: '3:4', // Portret/boekformaat
+        },
       }),
       signal: controller.signal,
     });
@@ -90,18 +95,28 @@ Maak een cover die leerlingen en docenten aanspreekt en het onderwerp visueel sa
     }
 
     const data = await response.json();
+    const message = data.choices?.[0]?.message;
 
-    // Flux returns image URL in the content
-    const content = data.choices?.[0]?.message?.content;
+    // Try various shapes OpenRouter/Gemini may return
+    let imageUrl: string | undefined;
 
-    if (typeof content === 'string') {
-      // Extract image URL from markdown format or direct URL
-      const urlMatch = content.match(/!\[.*?\]\((https?:\/\/[^\)]+)\)/);
-      const imageUrl = urlMatch ? urlMatch[1] : (content.startsWith('http') ? content : null);
+    // 1) Legacy: message.images[0].image_url.url
+    if (message?.images && Array.isArray(message.images) && message.images.length > 0) {
+      imageUrl = message.images[0]?.image_url?.url;
+    }
 
-      if (imageUrl) {
-        return NextResponse.json({ coverUrl: imageUrl });
+    // 2) Newer: message.content array with image_url
+    if (!imageUrl && Array.isArray(message?.content)) {
+      for (const part of message.content) {
+        if (part?.image_url?.url) {
+          imageUrl = part.image_url.url;
+          break;
+        }
       }
+    }
+
+    if (imageUrl) {
+      return NextResponse.json({ coverUrl: imageUrl });
     }
 
     console.error('No cover image in response:', JSON.stringify(data, null, 2));

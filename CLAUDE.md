@@ -113,11 +113,49 @@ Alle tabellen hebben RLS policies zodat gebruikers alleen eigen data kunnen zien
 - [x] Publiek delen met SSR voor snelle load
 - [x] Image compressie en parallelle uploads
 
-## Afbeelding Generatie
+## AI Models - BELANGRIJK: NOOIT AANPASSEN!
 
-### Models
-- **Reguliere afbeeldingen**: `google/gemini-2.0-flash-exp:free` (16:9 aspect ratio)
-- **Infographics**: `google/gemini-2.0-flash-exp:free` (1:1 aspect ratio)
+### ⚠️ KRITISCH: Deze models zijn GEFIXEERD - NIET wijzigen zonder expliciete toestemming!
+
+### Tekst Generatie
+- **Model**: `google/gemini-3-pro-preview`
+- **Locatie**: `src/app/api/generate/route.ts`
+- **Gebruik**: Alle hoofdstuk tekst generatie
+
+### Afbeelding Generatie
+- **Reguliere afbeeldingen**: `google/gemini-2.5-flash-image`
+  - Aspect ratio: 16:9
+  - Locatie: `src/app/api/generate-image/route.ts`
+
+- **Infographics**: `google/gemini-3-pro-image-preview`
+  - Aspect ratio: 1:1
+  - Locatie: `src/app/api/generate-image/route.ts`
+
+- **Cover afbeeldingen**: `google/gemini-3-pro-image-preview`
+  - Aspect ratio: 3:4
+  - Locatie: `src/app/api/generate-cover/route.ts`
+
+### API Format voor Gemini Images
+Gemini image models vereisen:
+```typescript
+{
+  model: 'google/gemini-...',
+  messages: [...],
+  modalities: ['image', 'text'],
+  image_config: {
+    aspect_ratio: '16:9' // of '1:1', '3:4'
+  }
+}
+```
+
+Response format:
+```typescript
+data.choices[0].message.images[0].image_url.url
+// of
+data.choices[0].message.content[0].image_url.url
+```
+
+## Afbeelding Generatie
 
 ### Infographic Feature
 Wanneer "AI-gegenereerd" is geselecteerd voor afbeeldingen, kan de gebruiker optioneel kiezen voor "Laatste afbeelding als infographic". Dit genereert een gedetailleerde visuele samenvatting van het hoofdstuk met:
