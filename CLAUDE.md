@@ -119,8 +119,11 @@ Alle tabellen hebben RLS policies zodat gebruikers alleen eigen data kunnen zien
 
 ### Tekst Generatie
 - **Model**: `google/gemini-3-pro-preview`
-- **Locatie**: `src/app/api/generate/route.ts`
-- **Gebruik**: Alle hoofdstuk tekst generatie
+- **Locaties**:
+  - `src/app/api/generate/route.ts` - Hoofdstuk generatie
+  - `src/app/api/quality-check/route.ts` - Kwaliteitscontrole
+  - `src/app/api/improve-content/route.ts` - Content verbetering
+- **Gebruik**: Alle tekst generatie, analyse en verbetering
 
 ### Afbeelding Generatie
 - **Reguliere afbeeldingen**: `google/gemini-2.5-flash-image`

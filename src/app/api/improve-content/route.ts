@@ -90,7 +90,7 @@ BELANGRIJK:
         'HTTP-Referer': request.headers.get('origin') || 'https://handboek-generator.vercel.app',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.0-flash-exp:free',
+        model: 'google/gemini-3-pro-preview',
         messages: [{ role: 'user', content: prompt }],
         temperature: 0.7,
       }),
