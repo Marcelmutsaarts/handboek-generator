@@ -3,15 +3,14 @@ import { NextRequest, NextResponse } from 'next/server';
 export const runtime = 'edge';
 export const maxDuration = 120;
 
+interface SelectedFeedback {
+  criterium: string;
+  feedbackItem: string;
+}
+
 interface ImproveRequest {
   content: string;
-  qualityReport: {
-    bias: { score: number; feedback: string[] };
-    helderheid: { score: number; feedback: string[] };
-    didactiek: { score: number; feedback: string[] };
-    niveauGeschikt: { score: number; feedback: string[] };
-    samenvatting: string;
-  };
+  selectedFeedback: SelectedFeedback[];
   niveau: string;
   leerjaar: number;
 }
@@ -19,11 +18,11 @@ interface ImproveRequest {
 export async function POST(request: NextRequest) {
   try {
     const body: ImproveRequest = await request.json();
-    const { content, qualityReport, niveau, leerjaar } = body;
+    const { content, selectedFeedback, niveau, leerjaar } = body;
 
-    if (!content || !qualityReport) {
+    if (!content || !selectedFeedback || selectedFeedback.length === 0) {
       return NextResponse.json(
-        { error: 'Missing required fields: content, qualityReport' },
+        { error: 'Missing required fields: content, selectedFeedback' },
         { status: 400 }
       );
     }
@@ -37,47 +36,35 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Build feedback text from quality report
-    const feedbackText = `
-KWALITEITSSCORE: ${qualityReport.bias.score + qualityReport.helderheid.score + qualityReport.didactiek.score + qualityReport.niveauGeschikt.score} / 20
+    // Build feedback text from selected feedback items
+    const feedbackText = selectedFeedback
+      .map((item) => `[${item.criterium}] ${item.feedbackItem}`)
+      .join('\n');
 
-BIAS & INCLUSIVITEIT (score: ${qualityReport.bias.score}/5):
-${qualityReport.bias.feedback.map((f) => `- ${f}`).join('\n')}
-
-HELDERHEID (score: ${qualityReport.helderheid.score}/5):
-${qualityReport.helderheid.feedback.map((f) => `- ${f}`).join('\n')}
-
-DIDACTIEK (score: ${qualityReport.didactiek.score}/5):
-${qualityReport.didactiek.feedback.map((f) => `- ${f}`).join('\n')}
-
-NIVEAU-GESCHIKTHEID (score: ${qualityReport.niveauGeschikt.score}/5):
-${qualityReport.niveauGeschikt.feedback.map((f) => `- ${f}`).join('\n')}
-
-ALGEMEEN: ${qualityReport.samenvatting}
-`.trim();
-
-    const prompt = `Je bent een ervaren onderwijsauteur. Verbeter de onderstaande tekst op basis van de kwaliteitsfeedback.
+    const prompt = `Je bent een ervaren onderwijsauteur. Verbeter de onderstaande tekst op basis van de GESELECTEERDE kwaliteitsfeedback.
 
 HUIDIGE TEKST:
 """
 ${content}
 """
 
-KWALITEITSFEEDBACK:
+GESELECTEERDE FEEDBACK PUNTEN OM TE VERWERKEN:
 ${feedbackText}
 
 INSTRUCTIES:
-1. Verwerk alle feedback punten waar de score lager dan 5 is
+1. Verwerk ALLEEN de bovenstaande geselecteerde feedback punten
 2. Behoud de EXACTE structuur (alle kopjes, secties)
 3. Behoud ALLE afbeeldingmarkers EXACT zoals ze zijn: [AFBEELDING: ...]
-4. Verbeter alleen de tekstuele inhoud
-5. Zorg dat de tekst past bij niveau ${niveau}, leerjaar ${leerjaar}
-6. Maak de tekst inclusiever, helderder en didactisch sterker
+4. Behoud ALLE bronvermeldingen en citaties EXACT zoals ze zijn
+5. Verbeter alleen de tekstuele inhoud waar de feedback op slaat
+6. Zorg dat de tekst past bij niveau ${niveau}, leerjaar ${leerjaar}
+7. Negeer andere aspecten die niet in de geselecteerde feedback staan
 
 BELANGRIJK:
 - Verander NIETS aan de structuur of afbeeldingmarkers
-- Lever de COMPLETE verbeterde tekst
-- Gebruik exact dezelfde koppen en secties`;
+- Lever de COMPLETE verbeterde tekst (niet alleen de aangepaste delen)
+- Gebruik exact dezelfde koppen en secties
+- Pas ALLEEN de specifieke feedback punten toe die zijn geselecteerd`;
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 120000);

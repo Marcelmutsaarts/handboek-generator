@@ -112,6 +112,30 @@ Alle tabellen hebben RLS policies zodat gebruikers alleen eigen data kunnen zien
 - [x] AI herschrijven van (delen van) hoofdstukken
 - [x] Publiek delen met SSR voor snelle load
 - [x] Image compressie en parallelle uploads
+- [x] Kwaliteitscontrole met selectieve feedback verwerking
+
+## Kwaliteitscontrole
+
+### Workflow
+1. **Analyseren**: AI analyseert het hoofdstuk op 4 criteria:
+   - Bias & Inclusiviteit (genderneutraliteit, culturele aannames, diversiteit)
+   - Helderheid & Begrijpelijkheid (taalgebruik, zinslengte, uitleg)
+   - Didactische Kwaliteit (structuur, voorbeelden, opbouw)
+   - Niveau-geschiktheid (taal en diepgang passend bij het niveau)
+
+2. **Feedback per criterium**: Elk criterium krijgt:
+   - Een score (1-5)
+   - Concrete feedback punten met voorbeelden
+
+3. **Selectieve verwerking**: Gebruiker kan per feedback punt kiezen:
+   - Aanvinken welke feedback punten verwerkt moeten worden
+   - AI past alleen geselecteerde feedback toe
+   - Structuur, afbeeldingen en bronnen blijven intact
+
+### Gerelateerde bestanden
+- `src/app/api/quality-check/route.ts` - Analyseert content en geeft feedback
+- `src/app/api/improve-content/route.ts` - Verwerkt geselecteerde feedback
+- `src/components/QualityFeedbackModal.tsx` - UI voor feedback selectie
 
 ## AI Models - BELANGRIJK: NOOIT AANPASSEN!
 
@@ -208,6 +232,8 @@ Gebruikers moeten hun eigen OpenRouter API key invoeren via de instellingen knop
   - Tekst generatie: 120s
   - Image generatie: 60s
   - Cover generatie: 60s
+  - Quality check: 60s
+  - Improve content: 120s
   - Rewrite: 60s
   - Structure: 30s
   - Caption: 15s

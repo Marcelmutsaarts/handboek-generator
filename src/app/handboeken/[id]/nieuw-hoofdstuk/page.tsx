@@ -5,7 +5,8 @@ import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import Header from '@/components/Header';
 import ChapterDisplay from '@/components/ChapterDisplay';
-import QualityCheckModal, { QualityReport } from '@/components/QualityCheckModal';
+import QualityFeedbackModal from '@/components/QualityFeedbackModal';
+import { QualityReport } from '@/components/QualityCheckModal';
 import SourceVerificationModal, { SourceVerificationReport } from '@/components/SourceVerificationModal';
 import { useAuth } from '@/hooks/useAuth';
 import { createClient } from '@/lib/supabase/client';
@@ -532,8 +533,8 @@ export default function NieuwHoofdstukPage() {
     }
   };
 
-  const handleImprove = async () => {
-    if (!content || !qualityReport || !handboek) return;
+  const handleImprove = async (selectedFeedback: { criterium: string; feedbackItem: string }[]) => {
+    if (!content || !handboek || selectedFeedback.length === 0) return;
 
     setIsImproving(true);
 
@@ -546,7 +547,7 @@ export default function NieuwHoofdstukPage() {
         },
         body: JSON.stringify({
           content,
-          qualityReport,
+          selectedFeedback,
           niveau: handboek.niveau,
           leerjaar: handboek.leerjaar,
         }),
@@ -644,26 +645,56 @@ export default function NieuwHoofdstukPage() {
       (r) => r.status === 'unreachable' || r.status === 'invalid' || r.status === 'suspicious'
     );
 
-    let updatedContent = content;
+    if (badSources.length === 0) {
+      setShowSourceModal(false);
+      return;
+    }
 
-    // Remove each bad source from the content
+    // Find the Bronnen section
+    const bronnenMatch = content.match(/## Bronnen\n([\s\S]*?)(?=\n##|$)/);
+    if (!bronnenMatch) {
+      console.warn('Geen bronnenlijst gevonden in content');
+      setError('Geen bronnenlijst gevonden om te bewerken');
+      return;
+    }
+
+    const bronnenSection = bronnenMatch[1];
+    let updatedBronnenSection = bronnenSection;
+
+    // Remove each bad source from the bronnen section only
     badSources.forEach((badSource) => {
       // Escape special regex characters in URL
       const escapedUrl = badSource.url.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-      // Match: - [Title](URL) - Description or - [Title](URL)
-      const patterns = [
-        new RegExp(`- \\[${badSource.title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\]\\(${escapedUrl}\\)[^\\n]*\\n?`, 'g'),
-        new RegExp(`- \\[[^\\]]+\\]\\(${escapedUrl}\\)[^\\n]*\\n?`, 'g'),
-      ];
+      // Match the entire line with this URL
+      // Format: - [Title](URL) or - [Title](URL) - Description
+      const pattern = new RegExp(`^- \\[[^\\]]*\\]\\(${escapedUrl}\\)[^\\n]*\\n?`, 'gm');
 
-      patterns.forEach((pattern) => {
-        updatedContent = updatedContent.replace(pattern, '');
-      });
+      const beforeLength = updatedBronnenSection.length;
+      updatedBronnenSection = updatedBronnenSection.replace(pattern, '');
+      const afterLength = updatedBronnenSection.length;
+
+      if (beforeLength === afterLength) {
+        console.warn('Bron niet gevonden in lijst:', badSource.url);
+      } else {
+        console.log('Bron verwijderd:', badSource.url);
+      }
     });
 
-    // Update content
-    setContent(updatedContent);
+    // Replace the bronnen section in the full content
+    const updatedContent = content.replace(
+      /## Bronnen\n[\s\S]*?(?=\n##|$)/,
+      `## Bronnen\n${updatedBronnenSection}`
+    );
+
+    // Only update if something actually changed
+    if (updatedContent !== content) {
+      setContent(updatedContent);
+      console.log('Content bijgewerkt, bronnen verwijderd');
+    } else {
+      console.warn('Geen wijzigingen aangebracht');
+    }
+
     setShowSourceModal(false);
     setSourceReport(null);
   };
@@ -1090,19 +1121,15 @@ export default function NieuwHoofdstukPage() {
       </main>
 
       {/* Quality Check Modal */}
-      <QualityCheckModal
-        isOpen={showQualityModal}
-        report={qualityReport}
-        isLoading={isCheckingQuality}
-        isImproving={isImproving}
-        onClose={() => setShowQualityModal(false)}
-        onAccept={() => setShowQualityModal(false)}
-        onImprove={handleImprove}
-        onEdit={() => {
-          setShowQualityModal(false);
-          // Gebruiker kan nu handmatig bewerken via ChapterEditor
-        }}
-      />
+      {showQualityModal && qualityReport && (
+        <QualityFeedbackModal
+          report={qualityReport}
+          isLoading={isCheckingQuality}
+          isImproving={isImproving}
+          onClose={() => setShowQualityModal(false)}
+          onImprove={handleImprove}
+        />
+      )}
 
       {/* Source Verification Modal */}
       <SourceVerificationModal

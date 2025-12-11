@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 export const runtime = 'edge';
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 interface QualityCheckRequest {
   content: string;
@@ -117,7 +117,7 @@ Antwoord in dit EXACTE JSON formaat (geen extra tekst, alleen JSON):
 }`;
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000);
+    const timeoutId = setTimeout(() => controller.abort(), 60000);
 
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',

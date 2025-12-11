@@ -380,38 +380,41 @@ Plaats EXACT 4 afbeeldingen op de aangegeven plekken, NIET meer, NIET minder!
     ? `
 ## BRONVERMELDING (INLINE + LIJST)
 
-AANTAL EN NIVEAU:
-Voeg ${getBronnenAantal(niveau)} toe, passend bij het onderwijsniveau.
+DOEL:
+Citeer ${getBronnenAantal(niveau)} IN DE TEKST, passend bij het onderwijsniveau.
 
-KRITISCH BELANGRIJK:
+BETROUWBARE BRONNEN:
 - Gebruik ALLEEN bronnen die DAADWERKELIJK BESTAAN en verifieerbaar zijn
 - Vermeld GEEN fictieve of verzonnen bronnen
-- Kies betrouwbare bronnen zoals:
+- Kies uit:
   * Wikipedia artikelen (gebruik volledige URL: https://nl.wikipedia.org/wiki/[artikel])
   * Wetenschappelijke publicaties en tijdschriften
   * Officiële overheidswebsites (bijv. rijksoverheid.nl, CBS.nl)
   * Erkende educatieve websites (bijv. Kennisnet, lesmateriaal.nu)
   * Gerenommeerde media en encyclopedieën
 
-VERWERKING IN DE TEKST:
-1. **Inline citaties**: Gebruik inline referenties in de lopende tekst:
-   - Na feiten, cijfers of stellingen: "(Wikipedia, 2024)" of "(CBS, 2023)"
-   - Bij belangrijke concepten of definities
-   - Minimaal 5-8 inline citaties verspreid door het hoofdstuk
-   - Bijvoorbeeld: "Fotosynthese is het proces waarbij planten licht omzetten in energie (Kennisnet, 2024)."
+WERKWIJZE (STRIKTE VOLGORDE):
 
-2. **Volledige bronnenlijst onderaan**:
-   Plaats alle gebruikte bronnen in een lijst onderaan met dit formaat:
+STAP 1: Schrijf de tekst MET inline citaties
+- Schrijf het hoofdstuk en citeer bronnen TIJDENS het schrijven
+- Plaats citaties na feiten, cijfers, stellingen en belangrijke concepten
+- Format: "(Bron, Jaar)" bijvoorbeeld "(Wikipedia, 2024)" of "(CBS, 2023)"
+- Citeer minimaal 5-8 keer in de tekst (mag dezelfde bron meerdere keren zijn)
+- Voorbeeld: "Fotosynthese is het proces waarbij planten licht omzetten in energie (Kennisnet, 2024)."
 
-## Bronnen
-- [Fotosynthese](https://nl.wikipedia.org/wiki/Fotosynthese) - Wikipedia artikel over fotosynthese (2024)
-- [Plantengroei en licht](https://www.kennisnet.nl/artikel/licht-plantengroei) - Kennisnet lesmateriaal over fotosynthese
-- [CBS Statistieken Natuur](https://www.cbs.nl/natuur) - Centraal Bureau voor de Statistiek (2023)
+STAP 2: Maak de bronnenlijst
+- Verzamel ALLEEN de bronnen die je in stap 1 daadwerkelijk geciteerd hebt
+- De lijst is een INVENTARISATIE van wat je al citeerde, GEEN nieuwe bronnen
+- Format:
+  ## Bronnen
+  - [Fotosynthese](https://nl.wikipedia.org/wiki/Fotosynthese) - Wikipedia artikel over fotosynthese (2024)
+  - [Plantengroei en licht](https://www.kennisnet.nl/artikel/licht-plantengroei) - Kennisnet lesmateriaal over fotosynthese
 
-BELANGRIJK:
-- Elke bron in de lijst MOET minstens 1x in de tekst geciteerd worden
-- Gebruik variatie in bronnen (niet alleen Wikipedia)
-- Zorg dat bronnen actueel en relevant zijn voor het onderwerp
+CONTROLE - VOOR JE BRONNENLIJST MAAKT, VRAAG JEZELF AF:
+❌ Staat "Agile Manifesto" in mijn lijst? Check: heb ik "(Agile Manifesto, ...)" in de tekst? NEE → Niet toevoegen!
+❌ Staat "Wikipedia Software" in mijn lijst? Check: heb ik "(Wikipedia, ...)" over software in de tekst? NEE → Niet toevoegen!
+✅ Heb ik "(Kennisnet, 2024)" in de tekst? JA → Voeg Kennisnet toe aan de lijst
+✅ Elke bron in de lijst MOET letterlijk geciteerd zijn in de tekst met "(Naam, Jaar)"
 `
     : '';
 
