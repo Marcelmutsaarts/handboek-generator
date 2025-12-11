@@ -139,6 +139,15 @@ Antwoord in dit EXACTE JSON formaat (geen extra tekst, alleen JSON):
     if (!response.ok) {
       const error = await response.text();
       console.error('OpenRouter error:', error);
+
+      // Better error messages for common issues
+      if (response.status === 429) {
+        return NextResponse.json(
+          { error: 'Rate limit bereikt. Wacht even en probeer het opnieuw.' },
+          { status: 429 }
+        );
+      }
+
       return NextResponse.json(
         { error: `OpenRouter API error: ${response.status}` },
         { status: response.status }

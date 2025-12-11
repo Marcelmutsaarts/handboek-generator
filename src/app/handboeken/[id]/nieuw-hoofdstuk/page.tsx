@@ -636,6 +636,38 @@ export default function NieuwHoofdstukPage() {
     setPageState('form');
   };
 
+  const handleRemoveBadSources = () => {
+    if (!sourceReport || !content) return;
+
+    // Get bad sources (unreachable, invalid, suspicious)
+    const badSources = sourceReport.results.filter(
+      (r) => r.status === 'unreachable' || r.status === 'invalid' || r.status === 'suspicious'
+    );
+
+    let updatedContent = content;
+
+    // Remove each bad source from the content
+    badSources.forEach((badSource) => {
+      // Escape special regex characters in URL
+      const escapedUrl = badSource.url.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+      // Match: - [Title](URL) - Description or - [Title](URL)
+      const patterns = [
+        new RegExp(`- \\[${badSource.title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\]\\(${escapedUrl}\\)[^\\n]*\\n?`, 'g'),
+        new RegExp(`- \\[[^\\]]+\\]\\(${escapedUrl}\\)[^\\n]*\\n?`, 'g'),
+      ];
+
+      patterns.forEach((pattern) => {
+        updatedContent = updatedContent.replace(pattern, '');
+      });
+    });
+
+    // Update content
+    setContent(updatedContent);
+    setShowSourceModal(false);
+    setSourceReport(null);
+  };
+
   if (authLoading || pageState === 'loading') {
     return (
       <div className="min-h-screen bg-background">
@@ -1080,6 +1112,7 @@ export default function NieuwHoofdstukPage() {
         onClose={() => setShowSourceModal(false)}
         onAccept={() => setShowSourceModal(false)}
         onRetry={handleRetryGeneration}
+        onRemoveBadSources={handleRemoveBadSources}
       />
     </div>
   );
