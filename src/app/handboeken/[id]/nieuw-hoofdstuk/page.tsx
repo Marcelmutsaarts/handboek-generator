@@ -572,23 +572,30 @@ export default function NieuwHoofdstukPage() {
   const extractSources = (generatedContent: string): { title: string; url: string }[] => {
     const sources: { title: string; url: string }[] = [];
 
-    // Find ## Bronnen section
-    const bronnenMatch = generatedContent.match(/## Bronnen\n([\s\S]*?)(?=\n##|$)/);
-    if (!bronnenMatch) return sources;
+    // Find ## Bronnen section (case-insensitive, flexible whitespace)
+    const bronnenMatch = generatedContent.match(/##\s*Bronnen\s*\n([\s\S]*?)(?=\n##|$)/i);
+    if (!bronnenMatch) {
+      console.warn('Geen ## Bronnen sectie gevonden in content');
+      console.log('Content preview:', generatedContent.substring(0, 500));
+      return sources;
+    }
 
     const bronnenSection = bronnenMatch[1];
+    console.log('Bronnen sectie gevonden:', bronnenSection.substring(0, 200));
 
-    // Extract markdown links: - [Title](URL)
-    const linkRegex = /- \[([^\]]+)\]\(([^)]+)\)/g;
+    // Extract markdown links: - [Title](URL) or [Title](URL) without dash
+    // More flexible: allows optional dash and spaces
+    const linkRegex = /-?\s*\[([^\]]+)\]\(([^)]+)\)/g;
     let match;
 
     while ((match = linkRegex.exec(bronnenSection)) !== null) {
       sources.push({
-        title: match[1],
-        url: match[2],
+        title: match[1].trim(),
+        url: match[2].trim(),
       });
     }
 
+    console.log(`${sources.length} bronnen geëxtraheerd`);
     return sources;
   };
 
@@ -650,8 +657,8 @@ export default function NieuwHoofdstukPage() {
       return;
     }
 
-    // Find the Bronnen section
-    const bronnenMatch = content.match(/## Bronnen\n([\s\S]*?)(?=\n##|$)/);
+    // Find the Bronnen section (case-insensitive, flexible whitespace)
+    const bronnenMatch = content.match(/##\s*Bronnen\s*\n([\s\S]*?)(?=\n##|$)/i);
     if (!bronnenMatch) {
       console.warn('Geen bronnenlijst gevonden in content');
       setError('Geen bronnenlijst gevonden om te bewerken');
@@ -683,7 +690,7 @@ export default function NieuwHoofdstukPage() {
 
     // Replace the bronnen section in the full content
     const updatedContent = content.replace(
-      /## Bronnen\n[\s\S]*?(?=\n##|$)/,
+      /##\s*Bronnen\s*\n[\s\S]*?(?=\n##|$)/i,
       `## Bronnen\n${updatedBronnenSection}`
     );
 
