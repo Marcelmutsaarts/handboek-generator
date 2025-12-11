@@ -2,43 +2,11 @@
 
 import { useMemo, useState } from 'react';
 import type { Paragraph, TextRun as DocxTextRun } from 'docx';
-import katex from 'katex';
 import { ChapterImage } from '@/types';
+import { renderSafeMarkdownSync } from '@/lib/safeMarkdown';
 
 // Simple cache to avoid reparsing identical markdown fragments
 const markdownCache = new Map<string, string>();
-
-// Render LaTeX formulas using KaTeX
-function renderLatex(text: string): string {
-  // First handle block math ($$...$$)
-  let result = text.replace(/\$\$([^$]+)\$\$/g, (_, formula) => {
-    try {
-      return katex.renderToString(formula.trim(), {
-        displayMode: true,
-        throwOnError: false,
-        strict: false,
-      });
-    } catch {
-      return `<span class="text-red-500">[Formule fout: ${formula}]</span>`;
-    }
-  });
-
-  // Then handle inline math ($...$)
-  // Use negative lookbehind/lookahead to avoid matching $$
-  result = result.replace(/(?<!\$)\$(?!\$)([^$]+)\$(?!\$)/g, (_, formula) => {
-    try {
-      return katex.renderToString(formula.trim(), {
-        displayMode: false,
-        throwOnError: false,
-        strict: false,
-      });
-    } catch {
-      return `<span class="text-red-500">[Formule fout: ${formula}]</span>`;
-    }
-  });
-
-  return result;
-}
 
 interface ChapterDisplayProps {
   content: string;
@@ -121,40 +89,8 @@ export default function ChapterDisplay({
     const cached = markdownCache.get(text);
     if (cached) return cached;
 
-    // First render LaTeX formulas (before other transformations mess with the $ signs)
-    let processed = renderLatex(text);
-
-    const parsed = processed
-      // Headers
-      .replace(/^### (.*$)/gm, '<h3>$1</h3>')
-      .replace(/^## (.*$)/gm, '<h2>$1</h2>')
-      .replace(/^# (.*$)/gm, '<h1>$1</h1>')
-      // Bold
-      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-      // Italic (but not inside KaTeX spans which use \mathit etc)
-      .replace(/(?<!\\)\*(?!\*)([^*]+)\*(?!\*)/g, '<em>$1</em>')
-      // Numbered lists
-      .replace(/^\d+\.\s+(.*$)/gm, '<li>$1</li>')
-      // Bullet lists
-      .replace(/^[-•]\s+(.*$)/gm, '<li>$1</li>')
-      // Wrap consecutive li elements in ul/ol
-      .replace(/(<li>.*<\/li>\n?)+/g, (match) => {
-        const isNumbered = text.includes('1.');
-        const tag = isNumbered ? 'ol' : 'ul';
-        return `<${tag}>${match}</${tag}>`;
-      })
-      // Paragraphs (double newlines)
-      .replace(/\n\n/g, '</p><p>')
-      // Single newlines within content
-      .replace(/\n/g, '<br>')
-      // Wrap in paragraph tags
-      .replace(/^(.+)$/s, '<p>$1</p>')
-      // Clean up empty paragraphs
-      .replace(/<p>\s*<\/p>/g, '')
-      .replace(/<p><h/g, '<h')
-      .replace(/<\/h(\d)><\/p>/g, '</h$1>')
-      .replace(/<p><(ul|ol)>/g, '<$1>')
-      .replace(/<\/(ul|ol)><\/p>/g, '</$1>');
+    // Use the safe markdown renderer with XSS protection
+    const parsed = renderSafeMarkdownSync(text);
     markdownCache.set(text, parsed);
     return parsed;
   };

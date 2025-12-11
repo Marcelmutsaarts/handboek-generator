@@ -1,7 +1,40 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { assertUrlIsSafe, safeFetch } from '@/lib/urlSafety';
+import { RateLimiter, getClientIp } from '@/lib/rateLimiter';
 
-export const runtime = 'edge';
+/**
+ * SSRF-Hardened Source Verification Endpoint
+ *
+ * Security Features:
+ * - HTTPS-only URLs
+ * - Private IP range blocking (localhost, 10.x, 192.168.x, 127.x, 169.254.x, etc.)
+ * - DNS resolution checks for private IPs
+ * - URL credential rejection
+ * - URL length validation (max 2048 chars)
+ * - Request limit (max 10 URLs per request)
+ * - Rate limiting (10 requests per IP per minute)
+ * - Concurrency limiting (3 parallel fetches max)
+ * - Redirect limiting (max 2 redirects)
+ * - Timeout enforcement (5 seconds per URL)
+ * - No body downloads (HEAD + Range requests only)
+ *
+ * IMPORTANT: Uses Node.js runtime for DNS/Net APIs (not Edge)
+ */
+
+export const runtime = 'nodejs';
 export const maxDuration = 30;
+
+// Rate limiter: 10 requests per IP per minute
+const rateLimiter = new RateLimiter(10, 60000);
+
+// Maximum URLs per request
+const MAX_URLS_PER_REQUEST = 10;
+
+// Maximum concurrent fetches
+const MAX_CONCURRENT_FETCHES = 3;
+
+// Per-URL timeout
+const URL_TIMEOUT_MS = 5000;
 
 interface Source {
   title: string;
@@ -16,8 +49,10 @@ interface VerifyRequest {
 interface VerificationResult {
   url: string;
   title: string;
-  status: 'verified' | 'unreachable' | 'invalid' | 'suspicious';
-  message: string;
+  ok: boolean;
+  status: number;
+  finalUrl: string;
+  error?: string;
   isTrustedDomain: boolean;
 }
 
@@ -50,47 +85,94 @@ function isTrustedDomain(url: string): boolean {
   }
 }
 
-async function verifyUrl(url: string, signal: AbortSignal): Promise<{ reachable: boolean; statusCode?: number }> {
+/**
+ * Verify a single source with SSRF protection
+ */
+async function verifySource(source: Source): Promise<VerificationResult> {
+  const { url, title } = source;
+
+  // Validate URL safety (SSRF protection)
   try {
-    // Try HEAD request first (faster, less bandwidth)
-    const response = await fetch(url, {
-      method: 'HEAD',
-      signal,
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; HandboekGenerator/1.0; +https://handboek-generator.vercel.app)',
-      },
-    });
-
-    return {
-      reachable: response.ok,
-      statusCode: response.status,
-    };
+    await assertUrlIsSafe(url, { maxLength: 2048 });
   } catch (error) {
-    // If HEAD fails, try GET (some servers don't support HEAD)
-    try {
-      const response = await fetch(url, {
-        method: 'GET',
-        signal,
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (compatible; HandboekGenerator/1.0; +https://handboek-generator.vercel.app)',
-        },
-      });
-
-      return {
-        reachable: response.ok,
-        statusCode: response.status,
-      };
-    } catch {
-      return { reachable: false };
-    }
+    return {
+      url,
+      title,
+      ok: false,
+      status: 0,
+      finalUrl: url,
+      error: error instanceof Error ? error.message : 'URL validation failed',
+      isTrustedDomain: false,
+    };
   }
+
+  // Check if domain is trusted
+  const trusted = isTrustedDomain(url);
+
+  // Safely fetch URL
+  const result = await safeFetch(url, {
+    timeout: URL_TIMEOUT_MS,
+    maxRedirects: 2,
+  });
+
+  return {
+    url,
+    title,
+    ok: result.ok,
+    status: result.status,
+    finalUrl: result.finalUrl,
+    error: result.error,
+    isTrustedDomain: trusted,
+  };
+}
+
+/**
+ * Process sources with concurrency limit
+ *
+ * Limits parallel fetches to prevent overwhelming the server or external hosts.
+ */
+async function processSourcesWithLimit(
+  sources: Source[],
+  limit: number
+): Promise<VerificationResult[]> {
+  const results: VerificationResult[] = [];
+  const queue = [...sources];
+
+  // Process in batches
+  while (queue.length > 0) {
+    const batch = queue.splice(0, limit);
+    const batchResults = await Promise.all(batch.map(verifySource));
+    results.push(...batchResults);
+  }
+
+  return results;
 }
 
 export async function POST(request: NextRequest) {
   try {
+    // Rate limiting check
+    const clientIp = getClientIp(request.headers);
+    if (!rateLimiter.check(clientIp)) {
+      const resetTime = Math.ceil(rateLimiter.getResetTime(clientIp) / 1000);
+      return NextResponse.json(
+        {
+          error: 'Rate limit exceeded',
+          message: `Too many requests. Try again in ${resetTime} seconds.`,
+        },
+        {
+          status: 429,
+          headers: {
+            'Retry-After': resetTime.toString(),
+          },
+        }
+      );
+    }
+
+    // Parse request body
     const body: VerifyRequest = await request.json();
     const { sources } = body;
 
+    // Validate sources array
     if (!sources || !Array.isArray(sources) || sources.length === 0) {
       return NextResponse.json(
         { error: 'Invalid request: sources array required' },
@@ -98,86 +180,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Limit to 20 sources to prevent abuse
-    if (sources.length > 20) {
+    // Limit number of sources
+    if (sources.length > MAX_URLS_PER_REQUEST) {
       return NextResponse.json(
-        { error: 'Too many sources. Maximum 20 sources per request.' },
+        {
+          error: 'Too many sources',
+          message: `Maximum ${MAX_URLS_PER_REQUEST} sources per request. Received ${sources.length}.`,
+        },
         { status: 400 }
       );
     }
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 25000);
-
-    // Verify all sources concurrently
-    const verificationPromises = sources.map(async (source): Promise<VerificationResult> => {
-      // Validate URL format
-      let urlObj: URL;
-      try {
-        urlObj = new URL(source.url);
-      } catch {
-        return {
-          url: source.url,
-          title: source.title,
-          status: 'invalid',
-          message: 'Ongeldige URL format',
-          isTrustedDomain: false,
-        };
-      }
-
-      // Check if domain is trusted
-      const trusted = isTrustedDomain(source.url);
-
-      // Verify URL is reachable
-      const { reachable, statusCode } = await verifyUrl(source.url, controller.signal);
-
-      if (reachable) {
-        return {
-          url: source.url,
-          title: source.title,
-          status: 'verified',
-          message: trusted
-            ? 'Geverifieerd en betrouwbaar domein'
-            : 'Bereikbaar, maar domein niet in betrouwbare lijst',
-          isTrustedDomain: trusted,
-        };
-      } else if (statusCode === 404) {
-        return {
-          url: source.url,
-          title: source.title,
-          status: 'unreachable',
-          message: 'Pagina niet gevonden (404)',
-          isTrustedDomain: trusted,
-        };
-      } else if (statusCode === 403 || statusCode === 401) {
-        return {
-          url: source.url,
-          title: source.title,
-          status: 'suspicious',
-          message: 'Toegang geweigerd - mogelijk bestaande pagina met toegangsbeperking',
-          isTrustedDomain: trusted,
-        };
-      } else {
-        return {
-          url: source.url,
-          title: source.title,
-          status: 'unreachable',
-          message: 'Niet bereikbaar',
-          isTrustedDomain: trusted,
-        };
-      }
-    });
-
-    const results = await Promise.all(verificationPromises);
-    clearTimeout(timeoutId);
+    // Verify all sources with concurrency limit
+    const results = await processSourcesWithLimit(sources, MAX_CONCURRENT_FETCHES);
 
     // Calculate statistics
     const stats = {
       total: results.length,
-      verified: results.filter((r) => r.status === 'verified').length,
-      unreachable: results.filter((r) => r.status === 'unreachable').length,
-      invalid: results.filter((r) => r.status === 'invalid').length,
-      suspicious: results.filter((r) => r.status === 'suspicious').length,
+      verified: results.filter((r) => r.ok).length,
+      failed: results.filter((r) => !r.ok).length,
       trusted: results.filter((r) => r.isTrustedDomain).length,
     };
 
@@ -188,15 +209,12 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Verify sources error:', error);
 
-    if (error instanceof Error && error.name === 'AbortError') {
-      return NextResponse.json(
-        { error: 'Verificatie timeout - probeer opnieuw' },
-        { status: 408 }
-      );
-    }
-
+    // Never expose internal error details to client
     return NextResponse.json(
-      { error: 'Failed to verify sources', details: error instanceof Error ? error.message : 'Unknown error' },
+      {
+        error: 'Failed to verify sources',
+        message: 'An internal error occurred. Please try again.',
+      },
       { status: 500 }
     );
   }

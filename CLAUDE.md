@@ -246,3 +246,33 @@ Gebruikers moeten hun eigen OpenRouter API key invoeren via de instellingen knop
 3. HTML wordt geüpload naar Storage
 4. Database slaat alleen `is_publiek` en `publieke_slug` op (geen HTML meer)
 5. Publieke pagina fetcht HTML direct van Storage (SSR, geen client JS nodig)
+
+## Security
+
+### XSS Protection
+- **Safe Markdown Rendering**: `src/lib/safeMarkdown.ts` - Unified/remark/rehype pipeline met sanitization
+- **Blocks**: `<script>`, event handlers, `<iframe>`, `javascript:` protocol
+- **Allows**: Headings, lists, tables, links, images, code blocks, LaTeX formulas
+- **Testing**: `http://localhost:3000/test-xss`
+- **Documentation**: `XSS-PROTECTION-SUMMARY.md`
+
+### SSRF Protection (verify-sources API)
+- **HTTPS-only**: Rejects http://, ftp://, file:// protocols
+- **Private IP blocking**: 127.x, 10.x, 192.168.x, 169.254.x, localhost
+- **DNS resolution checks**: Resolves hostnames and blocks if ANY IP is private
+- **Credential rejection**: Blocks URLs with username/password
+- **Rate limiting**: 10 requests per IP per minute (in-memory)
+- **Concurrency limiting**: Max 3 parallel fetches
+- **Redirect limiting**: Max 2 redirects per URL
+- **Timeout enforcement**: 5 seconds per URL
+- **No body downloads**: HEAD requests + Range: bytes=0-0
+- **Testing**: `http://localhost:3000/test-ssrf`
+- **Documentation**: `SSRF-PROTECTION.md`
+
+### Gerelateerde bestanden
+- `src/lib/urlSafety.ts` - URL validation, SSRF protection utilities
+- `src/lib/rateLimiter.ts` - In-memory rate limiting
+- `src/lib/safeMarkdown.ts` - XSS-safe markdown rendering
+- `src/app/api/verify-sources/route.ts` - SSRF-hardened source verification
+- `src/lib/__tests__/urlSafety.test.ts` - SSRF protection tests
+- `src/lib/__tests__/xss-protection.test.ts` - XSS protection tests

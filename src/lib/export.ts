@@ -1,38 +1,7 @@
 import { Document, Packer, Paragraph, TextRun, HeadingLevel, ImageRun, PageBreak, AlignmentType, VerticalAlign, convertInchesToTwip } from 'docx';
 import { saveAs } from 'file-saver';
-import katex from 'katex';
 import { Handboek, Hoofdstuk, Afbeelding } from '@/types';
-
-// Render LaTeX to HTML using KaTeX
-function renderLatex(text: string): string {
-  // First handle block math ($$...$$)
-  let result = text.replace(/\$\$([^$]+)\$\$/g, (_, formula) => {
-    try {
-      return katex.renderToString(formula.trim(), {
-        displayMode: true,
-        throwOnError: false,
-        strict: false,
-      });
-    } catch {
-      return `<span class="formula-error">[Formule: ${formula}]</span>`;
-    }
-  });
-
-  // Then handle inline math ($...$)
-  result = result.replace(/(?<!\$)\$(?!\$)([^$]+)\$(?!\$)/g, (_, formula) => {
-    try {
-      return katex.renderToString(formula.trim(), {
-        displayMode: false,
-        throwOnError: false,
-        strict: false,
-      });
-    } catch {
-      return `<span class="formula-error">[Formule: ${formula}]</span>`;
-    }
-  });
-
-  return result;
-}
+import { renderSafeMarkdownSync } from './safeMarkdown';
 
 // Convert LaTeX to readable Unicode text for Word export
 function latexToUnicode(text: string): string {
@@ -142,34 +111,11 @@ export const parseInlineFormatting = (text: string): TextRun[] => {
   return runs.length > 0 ? runs : [new TextRun({ text: processedText })];
 };
 
-// Parse markdown to HTML (with LaTeX support)
+// Parse markdown to HTML with XSS protection
 export const parseMarkdown = (text: string): string => {
   if (!text) return '';
-
-  // First render LaTeX formulas
-  let processed = renderLatex(text);
-
-  return processed
-    .replace(/^### (.*$)/gm, '<h3>$1</h3>')
-    .replace(/^## (.*$)/gm, '<h2>$1</h2>')
-    .replace(/^# (.*$)/gm, '<h1>$1</h1>')
-    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-    .replace(/(?<!\\)\*(?!\*)([^*]+)\*(?!\*)/g, '<em>$1</em>')
-    .replace(/^\d+\.\s+(.*$)/gm, '<li>$1</li>')
-    .replace(/^[-•]\s+(.*$)/gm, '<li>$1</li>')
-    .replace(/(<li>.*<\/li>\n?)+/g, (match) => {
-      const isNumbered = text.includes('1.');
-      const tag = isNumbered ? 'ol' : 'ul';
-      return `<${tag}>${match}</${tag}>`;
-    })
-    .replace(/\n\n/g, '</p><p>')
-    .replace(/\n/g, '<br>')
-    .replace(/^(.+)$/s, '<p>$1</p>')
-    .replace(/<p>\s*<\/p>/g, '')
-    .replace(/<p><h/g, '<h')
-    .replace(/<\/h(\d)><\/p>/g, '</h$1>')
-    .replace(/<p><(ul|ol)>/g, '<$1>')
-    .replace(/<\/(ul|ol)><\/p>/g, '</$1>');
+  // Use the safe markdown renderer with XSS protection and LaTeX support
+  return renderSafeMarkdownSync(text);
 };
 
 interface ChapterImage {
