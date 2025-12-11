@@ -269,10 +269,23 @@ Gebruikers moeten hun eigen OpenRouter API key invoeren via de instellingen knop
 - **Testing**: `http://localhost:3000/test-ssrf`
 - **Documentation**: `SSRF-PROTECTION.md`
 
+### Slug Validation (upload-public-html API)
+- **Strict validation**: Lowercase a-z, 0-9, hyphen only
+- **Max length**: 60 characters
+- **Path traversal blocking**: No `..`, `/`, `\`, `%2f`, `%5c`
+- **Position rules**: Must start with letter/number, cannot end with hyphen
+- **No encoding**: Blocks all `%` characters
+- **No special chars**: Blocks whitespace, underscores, etc.
+- **Testing**: `http://localhost:3000/test-slug`
+- **Documentation**: `SLUG-SECURITY.md`
+
 ### Gerelateerde bestanden
 - `src/lib/urlSafety.ts` - URL validation, SSRF protection utilities
 - `src/lib/rateLimiter.ts` - In-memory rate limiting
 - `src/lib/safeMarkdown.ts` - XSS-safe markdown rendering
+- `src/lib/slug.ts` - Slug validation, path traversal protection
 - `src/app/api/verify-sources/route.ts` - SSRF-hardened source verification
+- `src/app/api/upload-public-html/route.ts` - Slug-validated file uploads
 - `src/lib/__tests__/urlSafety.test.ts` - SSRF protection tests
 - `src/lib/__tests__/xss-protection.test.ts` - XSS protection tests
+- `src/lib/__tests__/slug.test.ts` - Slug validation tests

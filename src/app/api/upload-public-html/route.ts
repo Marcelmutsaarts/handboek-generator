@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { assertValidSlug } from '@/lib/slug';
 
 // Helper to convert base64 to blob
 function base64ToBlob(base64: string): { blob: Blob; mimeType: string } | null {
@@ -23,6 +24,18 @@ export async function POST(request: NextRequest) {
     if (!slug) {
       return NextResponse.json(
         { error: 'Slug is vereist' },
+        { status: 400 }
+      );
+    }
+
+    // Validate slug for security (prevent path traversal, injection)
+    try {
+      assertValidSlug(slug);
+    } catch (error) {
+      return NextResponse.json(
+        {
+          error: error instanceof Error ? error.message : 'Ongeldige slug',
+        },
         { status: 400 }
       );
     }
@@ -123,6 +136,18 @@ export async function DELETE(request: NextRequest) {
     if (!slug) {
       return NextResponse.json(
         { error: 'Slug is vereist' },
+        { status: 400 }
+      );
+    }
+
+    // Validate slug for security (prevent path traversal, injection)
+    try {
+      assertValidSlug(slug);
+    } catch (error) {
+      return NextResponse.json(
+        {
+          error: error instanceof Error ? error.message : 'Ongeldige slug',
+        },
         { status: 400 }
       );
     }
