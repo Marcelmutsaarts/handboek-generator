@@ -28,7 +28,26 @@ All requirements for Content Security Policy (CSP) and security headers have bee
 
 ## 🔒 Content Security Policy
 
-### Final CSP String
+### CSP Configuration (Environment-Aware)
+
+The CSP differs between development and production for Next.js compatibility:
+
+**Development Mode** (`NODE_ENV=development`):
+```
+default-src 'self';
+base-uri 'self';
+object-src 'none';
+frame-ancestors 'none';
+form-action 'self';
+img-src 'self' https: data: blob:;
+font-src 'self' https: data:;
+style-src 'self' 'unsafe-inline';
+script-src 'self' 'unsafe-eval' 'unsafe-inline';
+connect-src 'self' https: ws: wss:;
+upgrade-insecure-requests
+```
+
+**Production Mode** (`NODE_ENV=production`):
 ```
 default-src 'self';
 base-uri 'self';
@@ -42,6 +61,11 @@ script-src 'self' 'unsafe-eval';
 connect-src 'self' https:;
 upgrade-insecure-requests
 ```
+
+**Key Differences:**
+- Dev: Includes `'unsafe-inline'` in `script-src` for Next.js HMR
+- Dev: Includes `ws:` and `wss:` in `connect-src` for WebSocket (HMR)
+- Prod: Stricter policy without inline scripts or WebSocket
 
 ### What It Blocks
 
@@ -147,17 +171,29 @@ Our application has **three layers** of XSS protection:
 
 ## ⚠️ Known Trade-offs
 
-### 'unsafe-inline' for Styles
+### Environment-Specific Policy
+- **Development**: More permissive (`'unsafe-inline'` scripts, WebSocket)
+- **Production**: Stricter (no inline scripts, HTTPS only)
+- **Rationale**: Next.js HMR requires inline scripts and WebSocket in dev
+- **Security**: Production security not compromised
+
+### 'unsafe-inline' for Styles (Both Environments)
 - **Required for**: Next.js, Tailwind CSS
 - **Risk**: Low (styles can't execute code)
 - **Mitigation**: Markdown sanitizer prevents style injection
 - **Future**: Could use nonces for stricter policy
 
-### 'unsafe-eval' for Scripts
-- **Required for**: Next.js dev mode and runtime features
+### 'unsafe-eval' for Scripts (Both Environments)
+- **Required for**: Next.js runtime features
 - **Risk**: Medium (eval can execute strings)
 - **Mitigation**: Only app code uses eval, not user input
 - **Future**: Test production without 'unsafe-eval'
+
+### 'unsafe-inline' for Scripts (Development Only)
+- **Required for**: Next.js Hot Module Replacement (HMR)
+- **Risk**: Medium (inline scripts allowed in dev)
+- **Mitigation**: Only in local development, not production
+- **Future**: Production stricter without 'unsafe-inline'
 
 ## 📁 Files Changed
 

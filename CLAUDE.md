@@ -281,7 +281,8 @@ Gebruikers moeten hun eigen OpenRouter API key invoeren via de instellingen knop
 
 ### Content Security Policy (CSP) & Security Headers
 - **Implementation**: `next.config.ts` - Applied globally to all routes
-- **CSP Directives**:
+- **Environment-Aware**: Different policies for development (permissive for HMR) and production (strict)
+- **CSP Directives** (Production):
   - `default-src 'self'` - Only allow resources from same origin
   - `script-src 'self' 'unsafe-eval'` - Scripts from same origin only (eval for Next.js)
   - `style-src 'self' 'unsafe-inline'` - Styles from same origin + inline (for Tailwind)
@@ -290,6 +291,7 @@ Gebruikers moeten hun eigen OpenRouter API key invoeren via de instellingen knop
   - `object-src 'none'` - Block plugins (Flash, Java)
   - `frame-ancestors 'none'` - Prevent clickjacking
   - `form-action 'self'` - Forms submit to same origin only
+- **Development Mode**: Adds `'unsafe-inline'` to `script-src` and `ws: wss:` to `connect-src` for Next.js HMR
 - **Complementary Headers**:
   - `X-Content-Type-Options: nosniff` - Prevent MIME-type sniffing
   - `Referrer-Policy: strict-origin-when-cross-origin` - Control referrer information

@@ -2,7 +2,19 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   async headers() {
+    const isDev = process.env.NODE_ENV === 'development';
+
     // Content Security Policy - strict configuration to prevent XSS
+    // In development: more permissive for Next.js dev features
+    // In production: strict policy
+    const scriptSrc = isDev
+      ? "script-src 'self' 'unsafe-eval' 'unsafe-inline'"
+      : "script-src 'self' 'unsafe-eval'";
+
+    const connectSrc = isDev
+      ? "connect-src 'self' https: ws: wss:"
+      : "connect-src 'self' https:";
+
     const csp = [
       "default-src 'self'",
       "base-uri 'self'",
@@ -16,11 +28,10 @@ const nextConfig: NextConfig = {
       "font-src 'self' https: data:",
       // Allow inline styles (required for Next.js and Tailwind)
       "style-src 'self' 'unsafe-inline'",
-      // Allow scripts from self only
-      // Note: Next.js dev mode may require 'unsafe-eval', but production should work with 'self'
-      "script-src 'self' 'unsafe-eval'",
-      // Allow connections to self and HTTPS endpoints (Supabase, OpenRouter, etc.)
-      "connect-src 'self' https:",
+      // Scripts: strict in production, permissive in development
+      scriptSrc,
+      // Connections: allow WebSocket in dev for HMR
+      connectSrc,
       // Upgrade insecure requests to HTTPS
       "upgrade-insecure-requests",
     ].join("; ");

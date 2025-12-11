@@ -12,8 +12,24 @@ Content Security Policy (CSP) is a browser security feature that helps prevent X
 
 ### Content-Security-Policy
 
-The CSP is configured in `next.config.ts` and applies to all routes:
+The CSP is configured in `next.config.ts` and applies to all routes. The policy differs between development and production for Next.js compatibility:
 
+**Development Mode:**
+```
+default-src 'self';
+base-uri 'self';
+object-src 'none';
+frame-ancestors 'none';
+form-action 'self';
+img-src 'self' https: data: blob:;
+font-src 'self' https: data:;
+style-src 'self' 'unsafe-inline';
+script-src 'self' 'unsafe-eval' 'unsafe-inline';
+connect-src 'self' https: ws: wss:;
+upgrade-insecure-requests
+```
+
+**Production Mode:**
 ```
 default-src 'self';
 base-uri 'self';
@@ -28,6 +44,10 @@ connect-src 'self' https:;
 upgrade-insecure-requests
 ```
 
+**Key Differences:**
+- Development includes `'unsafe-inline'` in `script-src` for Next.js Hot Module Replacement (HMR)
+- Development includes `ws:` and `wss:` in `connect-src` for WebSocket connections (HMR)
+
 #### Directive Breakdown
 
 | Directive | Value | Purpose | Why Safe |
@@ -40,8 +60,8 @@ upgrade-insecure-requests
 | **img-src** | `'self' https: data: blob:` | Allows images from same origin, HTTPS sources, data URIs, and blobs | Supports Supabase Storage, Pexels, AI-generated images |
 | **font-src** | `'self' https: data:` | Allows fonts from same origin, HTTPS sources, and data URIs | Supports web fonts and icon fonts |
 | **style-src** | `'self' 'unsafe-inline'` | Allows styles from same origin and inline styles | Required for Next.js and Tailwind CSS |
-| **script-src** | `'self' 'unsafe-eval'` | Allows scripts from same origin and eval | Required for Next.js dev mode and some runtime features |
-| **connect-src** | `'self' https:` | Allows connections to same origin and HTTPS endpoints | Allows API calls to Supabase, OpenRouter, etc. |
+| **script-src** | `'self' 'unsafe-eval'` (+ `'unsafe-inline'` in dev) | Allows scripts from same origin and eval; inline in dev for HMR | Dev: HMR needs inline; Prod: stricter policy |
+| **connect-src** | `'self' https:` (+ `ws: wss:` in dev) | Allows connections to same origin and HTTPS; WebSocket in dev | Dev: HMR uses WebSocket; Prod: HTTPS only |
 | **upgrade-insecure-requests** | (no value) | Upgrades HTTP requests to HTTPS | Forces secure connections |
 
 ### Complementary Security Headers
@@ -134,9 +154,24 @@ Our application has **three layers of XSS protection**:
 
 ## Known Trade-offs
 
-### 'unsafe-inline' for Styles
+### Environment-Specific CSP
+
+The CSP differs between development and production to balance security with Next.js compatibility:
+
+**Development Mode** (`NODE_ENV=development`):
+- `script-src 'self' 'unsafe-eval' 'unsafe-inline'` - Allows inline scripts for HMR
+- `connect-src 'self' https: ws: wss:` - Allows WebSocket for HMR
+- **Why**: Next.js Hot Module Replacement requires inline scripts and WebSocket connections
+- **Risk**: More permissive, but only in local development environment
+
+**Production Mode** (`NODE_ENV=production`):
+- `script-src 'self' 'unsafe-eval'` - Stricter, no inline scripts
+- `connect-src 'self' https:` - No WebSocket, HTTPS only
+- **Security**: Better protection in production where it matters most
+
+### 'unsafe-inline' for Styles (Both Environments)
 **Why Required**: Next.js and Tailwind CSS use inline styles for dynamic styling
-**Risk**: Inline styles could theoretically be exploited for data exfiltration
+**Risk**: Low - inline styles could theoretically be exploited for data exfiltration
 **Mitigation**:
 - Markdown sanitizer prevents style injection
 - Tailwind classes are pre-defined and safe
@@ -144,15 +179,15 @@ Our application has **three layers of XSS protection**:
 
 **Future Improvement**: Use Next.js CSP nonce support for stricter policy
 
-### 'unsafe-eval' for Scripts
-**Why Required**: Next.js dev mode and some runtime features use eval
-**Risk**: eval can execute arbitrary strings as code
+### 'unsafe-eval' for Scripts (Both Environments)
+**Why Required**: Next.js runtime features use eval
+**Risk**: Medium - eval can execute arbitrary strings as code
 **Mitigation**:
 - Only application code can use eval (not user input)
 - Markdown sanitizer prevents script injection
 - Alternative would break Next.js features
 
-**Production Note**: If production builds work without 'unsafe-eval', remove it
+**Production Note**: If production builds work without 'unsafe-eval', remove it from production config
 
 **Future Improvement**: Test production build and remove 'unsafe-eval' if possible
 
@@ -160,7 +195,21 @@ Our application has **three layers of XSS protection**:
 
 ### File: `next.config.ts`
 
+The CSP is configured with environment-aware directives:
+
 ```typescript
+const isDev = process.env.NODE_ENV === 'development';
+
+// Script policy: stricter in production
+const scriptSrc = isDev
+  ? "script-src 'self' 'unsafe-eval' 'unsafe-inline'"
+  : "script-src 'self' 'unsafe-eval'";
+
+// Connection policy: WebSocket allowed in dev for HMR
+const connectSrc = isDev
+  ? "connect-src 'self' https: ws: wss:"
+  : "connect-src 'self' https:";
+
 const csp = [
   "default-src 'self'",
   "base-uri 'self'",
@@ -170,8 +219,8 @@ const csp = [
   "img-src 'self' https: data: blob:",
   "font-src 'self' https: data:",
   "style-src 'self' 'unsafe-inline'",
-  "script-src 'self' 'unsafe-eval'",
-  "connect-src 'self' https:",
+  scriptSrc,  // Environment-specific
+  connectSrc, // Environment-specific
   "upgrade-insecure-requests",
 ].join("; ");
 ```
