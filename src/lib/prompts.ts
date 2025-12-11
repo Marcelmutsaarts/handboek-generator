@@ -361,10 +361,27 @@ Plaats EXACT 4 afbeeldingen op de aangegeven plekken, NIET meer, NIET minder!
 `
     : '';
 
+  const getBronnenAantal = (niveau: string): string => {
+    const bronnenConfig: Record<string, { aantal: string; complexiteit: string }> = {
+      po_onder: { aantal: '2-3', complexiteit: 'zeer eenvoudige websites (Wikipedia, educatieve sites)' },
+      po_boven: { aantal: '3-4', complexiteit: 'toegankelijke websites (Wikipedia, Kennisnet)' },
+      vmbo: { aantal: '3-5', complexiteit: 'begrijpbare bronnen (Wikipedia, educatieve sites, nieuwsartikelen)' },
+      havo: { aantal: '4-6', complexiteit: 'mix van Wikipedia, educatieve sites en vakbladen' },
+      vwo: { aantal: '5-7', complexiteit: 'academische bronnen (Wikipedia, wetenschappelijke sites, vakpublicaties)' },
+      mbo: { aantal: '4-6', complexiteit: 'praktijkgerichte bronnen (vakliteratuur, brancheorganisaties)' },
+      hbo: { aantal: '6-8', complexiteit: 'wetenschappelijke en professionele bronnen' },
+      uni: { aantal: '7-10', complexiteit: 'academische publicaties, peer-reviewed artikelen' },
+    };
+    const config = bronnenConfig[niveau] || bronnenConfig.havo;
+    return `${config.aantal} bronnen van ${config.complexiteit}`;
+  };
+
   const bronnenSection = metBronnen
     ? `
-## BRONVERMELDING
-Voeg een "Bronnen" sectie toe aan het einde van het hoofdstuk met ECHTE, VERIFIEERBARE bronnen.
+## BRONVERMELDING (INLINE + LIJST)
+
+AANTAL EN NIVEAU:
+Voeg ${getBronnenAantal(niveau)} toe, passend bij het onderwijsniveau.
 
 KRITISCH BELANGRIJK:
 - Gebruik ALLEEN bronnen die DAADWERKELIJK BESTAAN en verifieerbaar zijn
@@ -376,17 +393,25 @@ KRITISCH BELANGRIJK:
   * Erkende educatieve websites (bijv. Kennisnet, lesmateriaal.nu)
   * Gerenommeerde media en encyclopedieën
 
-FORMAAT:
-Plaats bronnen in een lijst onderaan met dit formaat:
-## Bronnen
-- [Titel van de bron](URL) - Korte beschrijving (bijv. auteur, publicatiedatum)
+VERWERKING IN DE TEKST:
+1. **Inline citaties**: Gebruik inline referenties in de lopende tekst:
+   - Na feiten, cijfers of stellingen: "(Wikipedia, 2024)" of "(CBS, 2023)"
+   - Bij belangrijke concepten of definities
+   - Minimaal 5-8 inline citaties verspreid door het hoofdstuk
+   - Bijvoorbeeld: "Fotosynthese is het proces waarbij planten licht omzetten in energie (Kennisnet, 2024)."
 
-Bijvoorbeeld:
-## Bronnen
-- [Fotosynthese](https://nl.wikipedia.org/wiki/Fotosynthese) - Wikipedia artikel over fotosynthese
-- [Het effect van licht op plantengroei](https://www.kennisnet.nl/artikel/licht-plantengroei) - Kennisnet lesmateriaal
+2. **Volledige bronnenlijst onderaan**:
+   Plaats alle gebruikte bronnen in een lijst onderaan met dit formaat:
 
-Voeg 3-5 relevante bronnen toe die gebruikt kunnen worden voor verdere studie of verificatie van de informatie in het hoofdstuk.
+## Bronnen
+- [Fotosynthese](https://nl.wikipedia.org/wiki/Fotosynthese) - Wikipedia artikel over fotosynthese (2024)
+- [Plantengroei en licht](https://www.kennisnet.nl/artikel/licht-plantengroei) - Kennisnet lesmateriaal over fotosynthese
+- [CBS Statistieken Natuur](https://www.cbs.nl/natuur) - Centraal Bureau voor de Statistiek (2023)
+
+BELANGRIJK:
+- Elke bron in de lijst MOET minstens 1x in de tekst geciteerd worden
+- Gebruik variatie in bronnen (niet alleen Wikipedia)
+- Zorg dat bronnen actueel en relevant zijn voor het onderwerp
 `
     : '';
 
