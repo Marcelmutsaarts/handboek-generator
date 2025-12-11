@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import Header from '@/components/Header';
 import ChapterDisplay from '@/components/ChapterDisplay';
+import QualityCheckModal, { QualityReport } from '@/components/QualityCheckModal';
 import { useAuth } from '@/hooks/useAuth';
 import { createClient } from '@/lib/supabase/client';
 import { Handboek, Hoofdstuk, Lengte, AfbeeldingType, ChapterImage, getTemplate, WOORDEN_PER_LENGTE, HoofdstukPlan } from '@/types';
@@ -56,6 +57,12 @@ export default function NieuwHoofdstukPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [savedHoofdstukId, setSavedHoofdstukId] = useState<string | null>(null);
   const lastFlushRef = useRef(0);
+
+  // Quality check state
+  const [showQualityModal, setShowQualityModal] = useState(false);
+  const [qualityReport, setQualityReport] = useState<QualityReport | null>(null);
+  const [isCheckingQuality, setIsCheckingQuality] = useState(false);
+  const [isImproving, setIsImproving] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -480,6 +487,78 @@ export default function NieuwHoofdstukPage() {
     setIsSaving(false);
   };
 
+  const handleQualityCheck = async () => {
+    if (!content || !handboek) return;
+
+    setShowQualityModal(true);
+    setIsCheckingQuality(true);
+    setQualityReport(null);
+
+    try {
+      const response = await fetch('/api/quality-check', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getApiKeyHeader(),
+        },
+        body: JSON.stringify({
+          content,
+          niveau: handboek.niveau,
+          leerjaar: handboek.leerjaar,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Kwaliteitscheck mislukt');
+      }
+
+      const report: QualityReport = await response.json();
+      setQualityReport(report);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Kwaliteitscheck mislukt');
+      setShowQualityModal(false);
+    } finally {
+      setIsCheckingQuality(false);
+    }
+  };
+
+  const handleImprove = async () => {
+    if (!content || !qualityReport || !handboek) return;
+
+    setIsImproving(true);
+
+    try {
+      const response = await fetch('/api/improve-content', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getApiKeyHeader(),
+        },
+        body: JSON.stringify({
+          content,
+          qualityReport,
+          niveau: handboek.niveau,
+          leerjaar: handboek.leerjaar,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Verbeteren mislukt');
+      }
+
+      const data = await response.json();
+      setContent(data.improved);
+      setShowQualityModal(false);
+      setQualityReport(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Verbeteren mislukt');
+    } finally {
+      setIsImproving(false);
+    }
+  };
+
   if (authLoading || pageState === 'loading') {
     return (
       <div className="min-h-screen bg-background">
@@ -791,39 +870,61 @@ export default function NieuwHoofdstukPage() {
               </div>
             )}
 
-            {/* Save button */}
+            {/* Quality check & Save buttons */}
             {pageState === 'result' && !isStreaming && !isLoadingImages && (
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-center justify-between">
-                {savedHoofdstukId ? (
-                  <>
-                    <span className="text-green-700 text-sm">Hoofdstuk opgeslagen!</span>
-                    <Link
-                      href={`/handboeken/${handboekId}`}
-                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
-                    >
-                      Terug naar handboek
-                    </Link>
-                  </>
-                ) : (
-                  <>
-                    <span className="text-green-700 text-sm">Hoofdstuk gegenereerd! Wil je het opslaan?</span>
+              <>
+                {/* Quality check button */}
+                {!savedHoofdstukId && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-center justify-between">
+                    <div>
+                      <div className="text-blue-700 text-sm font-medium">Kwaliteit controleren?</div>
+                      <div className="text-blue-600 text-xs mt-0.5">Check op bias, helderheid, didactiek en niveau-geschiktheid</div>
+                    </div>
                     <button
-                      onClick={handleSave}
-                      disabled={isSaving}
-                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm disabled:opacity-50 flex items-center gap-2"
+                      onClick={handleQualityCheck}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm flex items-center gap-2"
                     >
-                      {isSaving ? (
-                        <>
-                          <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
-                          Opslaan...
-                        </>
-                      ) : (
-                        'Opslaan in handboek'
-                      )}
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      Kwaliteit controleren
                     </button>
-                  </>
+                  </div>
                 )}
-              </div>
+
+                {/* Save button */}
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-center justify-between">
+                  {savedHoofdstukId ? (
+                    <>
+                      <span className="text-green-700 text-sm">Hoofdstuk opgeslagen!</span>
+                      <Link
+                        href={`/handboeken/${handboekId}`}
+                        className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
+                      >
+                        Terug naar handboek
+                      </Link>
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-green-700 text-sm">Hoofdstuk gegenereerd! Wil je het opslaan?</span>
+                      <button
+                        onClick={handleSave}
+                        disabled={isSaving}
+                        className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm disabled:opacity-50 flex items-center gap-2"
+                      >
+                        {isSaving ? (
+                          <>
+                            <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
+                            Opslaan...
+                          </>
+                        ) : (
+                          'Opslaan in handboek'
+                        )}
+                      </button>
+                    </>
+                  )}
+                </div>
+              </>
             )}
 
             {error && (
@@ -842,6 +943,21 @@ export default function NieuwHoofdstukPage() {
           </div>
         )}
       </main>
+
+      {/* Quality Check Modal */}
+      <QualityCheckModal
+        isOpen={showQualityModal}
+        report={qualityReport}
+        isLoading={isCheckingQuality}
+        isImproving={isImproving}
+        onClose={() => setShowQualityModal(false)}
+        onAccept={() => setShowQualityModal(false)}
+        onImprove={handleImprove}
+        onEdit={() => {
+          setShowQualityModal(false);
+          // Gebruiker kan nu handmatig bewerken via ChapterEditor
+        }}
+      />
     </div>
   );
 }
