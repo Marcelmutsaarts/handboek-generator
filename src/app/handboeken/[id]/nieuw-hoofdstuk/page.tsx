@@ -71,6 +71,7 @@ export default function NieuwHoofdstukPage() {
   const [showSourceModal, setShowSourceModal] = useState(false);
   const [sourceReport, setSourceReport] = useState<SourceVerificationReport | null>(null);
   const [isVerifyingSources, setIsVerifyingSources] = useState(false);
+  const [isRegeneratingSources, setIsRegeneratingSources] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -604,28 +605,29 @@ export default function NieuwHoofdstukPage() {
     return sources;
   };
 
-  const handleVerifySources = async () => {
-    if (!content || !metBronnen) return;
+  const handleVerifySources = async (overrideContent?: string) => {
+    const targetContent = overrideContent ?? content;
+    if (!targetContent || !metBronnen) return;
 
-    const sources = extractSources(content);
+    const sources = extractSources(targetContent);
 
     if (sources.length === 0) {
       setError('Geen bronnen gevonden in het hoofdstuk');
       return;
     }
 
-    setShowSourceModal(true);
-    setIsVerifyingSources(true);
-    setSourceReport(null);
+      setShowSourceModal(true);
+      setIsVerifyingSources(true);
+      setSourceReport(null);
 
-    try {
-      const response = await fetch('/api/verify-sources', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ sources }),
-      });
+      try {
+        const response = await fetch('/api/verify-sources', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ sources }),
+        });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -642,11 +644,47 @@ export default function NieuwHoofdstukPage() {
     }
   };
 
-  const handleRetryGeneration = () => {
+  const handleRegenerateSources = async () => {
+    if (!content || !handboek || !metBronnen) return;
+
+    setIsRegeneratingSources(true);
     setShowSourceModal(false);
-    setSourceReport(null);
-    // Reset to form state to allow regeneration
-    setPageState('form');
+    setError(null);
+
+    const onderwerpVoorBronnen = onderwerp.trim() || handboek.titel;
+
+    try {
+      const response = await fetch('/api/regenerate-sources', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getApiKeyHeader(),
+        },
+        body: JSON.stringify({
+          content,
+          onderwerp: onderwerpVoorBronnen,
+          niveau: handboek.niveau,
+          leerjaar: handboek.leerjaar,
+          context: handboek.context || '',
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Kon bronnen niet regenereren');
+      }
+
+      const data = await response.json();
+      const regeneratedContent = data.content as string;
+      if (regeneratedContent) {
+        setContent(regeneratedContent);
+        await handleVerifySources(regeneratedContent);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Bronnen regenereren mislukt');
+    } finally {
+      setIsRegeneratingSources(false);
+    }
   };
 
   const handleRemoveBadSources = () => {
@@ -680,8 +718,8 @@ export default function NieuwHoofdstukPage() {
       const escapedUrl = badSource.url.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       const escapedTitle = badSource.title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-      // 1. Remove from bronnen section
-      const bronnenPattern = new RegExp(`^- \\[[^\\]]*\\]\\(${escapedUrl}\\)[^\\n]*\\n?`, 'gm');
+      // 1. Remove from bronnen section (allow optional whitespace/bullet style)
+      const bronnenPattern = new RegExp(`^\\s*[-*]?\\s*\\[[^\\]]*\\]\\(${escapedUrl}\\)[^\\n]*\\n?`, 'gmi');
       const beforeLength = updatedBronnenSection.length;
       updatedBronnenSection = updatedBronnenSection.replace(bronnenPattern, '');
       const afterLength = updatedBronnenSection.length;
@@ -693,26 +731,45 @@ export default function NieuwHoofdstukPage() {
       }
 
       // 2. Remove inline citations from the text
-      // Match patterns like: (Wikipedia, 2024) or (CBS, 2023) or (Kennisnet, 2024)
-      // Extract the name from the title (first word or before comma/space)
-      const sourceName = badSource.title.split(/[,\s-]/)[0];
-      const inlineCitationPattern = new RegExp(`\\s*\\(${escapedTitle}[^)]*\\)`, 'gi');
-      const inlineCitationPattern2 = new RegExp(`\\s*\\(${sourceName}[^)]*\\)`, 'gi');
-
-      const beforeInline = updatedContent.length;
-      updatedContent = updatedContent.replace(inlineCitationPattern, '');
-      updatedContent = updatedContent.replace(inlineCitationPattern2, '');
-      const afterInline = updatedContent.length;
-
-      if (beforeInline !== afterInline) {
-        console.log('Inline citaties verwijderd voor:', badSource.title);
+      const citationMarkers = new Set<string>();
+      if (badSource.title) {
+        citationMarkers.add(badSource.title);
+        const firstWord = badSource.title.split(/[\s,;-]/).filter(Boolean)[0];
+        if (firstWord) citationMarkers.add(firstWord);
       }
+
+      try {
+        const hostname = new URL(badSource.url).hostname.replace(/^www\\./, '');
+        const hostParts = hostname.split('.');
+        const rootDomain = hostParts.slice(-2).join('.');
+        const hostKeyword = hostParts.length > 1 ? hostParts[hostParts.length - 2] : hostname;
+        if (hostname) citationMarkers.add(hostname);
+        if (rootDomain) citationMarkers.add(rootDomain);
+        if (hostKeyword) citationMarkers.add(hostKeyword);
+      } catch {
+        // ignore url parsing errors
+      }
+
+      citationMarkers.forEach((marker) => {
+        const escapedMarker = marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const inlineCitationPattern = new RegExp(`\\s*\\(${escapedMarker}[^)]*\\)`, 'gi');
+        const beforeInline = updatedContent.length;
+        updatedContent = updatedContent.replace(inlineCitationPattern, '');
+        const afterInline = updatedContent.length;
+
+        if (beforeInline !== afterInline) {
+          console.log('Inline citaties verwijderd voor marker:', marker);
+        }
+      });
     });
+
+    const cleanedBronnenSection = updatedBronnenSection.trim();
+    const replacementSection = cleanedBronnenSection ? `## Bronnen\n${cleanedBronnenSection}\n` : '## Bronnen\n';
 
     // Replace the bronnen section in the updated content
     updatedContent = updatedContent.replace(
       /##\s*Bronnen\s*\n[\s\S]*?(?=\n##|$)/i,
-      `## Bronnen\n${updatedBronnenSection}`
+      replacementSection
     );
 
     // Only update if something actually changed
@@ -1094,7 +1151,7 @@ export default function NieuwHoofdstukPage() {
                         {metBronnen && (
                           <button
                             onClick={handleVerifySources}
-                            disabled={isVerifyingSources}
+                            disabled={isVerifyingSources || isRegeneratingSources}
                             className="px-3 py-1.5 bg-white border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors text-xs flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
                             title="Controleer of de bronnen echt bestaan en bereikbaar zijn"
                           >
@@ -1184,9 +1241,10 @@ export default function NieuwHoofdstukPage() {
         isOpen={showSourceModal}
         report={sourceReport}
         isLoading={isVerifyingSources}
+        isRegenerating={isRegeneratingSources}
         onClose={() => setShowSourceModal(false)}
         onAccept={() => setShowSourceModal(false)}
-        onRetry={handleRetryGeneration}
+        onRetry={handleRegenerateSources}
         onRemoveBadSources={handleRemoveBadSources}
       />
     </div>

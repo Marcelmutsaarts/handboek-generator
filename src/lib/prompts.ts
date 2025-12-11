@@ -384,8 +384,9 @@ DOEL:
 Citeer ${getBronnenAantal(niveau)} IN DE TEKST, passend bij het onderwijsniveau.
 
 BETROUWBARE BRONNEN:
-- Gebruik ALLEEN bronnen die DAADWERKELIJK BESTAAN en verifieerbaar zijn
-- Vermeld GEEN fictieve of verzonnen bronnen
+- Gebruik ALLEEN bronnen die DAADWERKELIJK BESTAAN en publiek toegankelijk zijn
+- Kies bronnen die specifiek over "${onderwerp}" gaan (geen generieke homepages of standaardvoorbeelden)
+- Vermijd placeholders of steeds dezelfde titels ("Agile Manifesto", "Wikipedia", "Kennisnet") zonder onderwerp
 - Kies uit:
   * Wikipedia artikelen (gebruik volledige URL: https://nl.wikipedia.org/wiki/[artikel])
   * Wetenschappelijke publicaties en tijdschriften
@@ -396,15 +397,18 @@ BETROUWBARE BRONNEN:
 WERKWIJZE (STRIKTE VOLGORDE):
 
 STAP 1: Schrijf de tekst MET inline citaties
-- Schrijf het hoofdstuk en citeer bronnen TIJDENS het schrijven
+- Schrijf het hoofdstuk en citeer bronnen TIJDENS het schrijven (inhoud moet duidelijk leunen op de bron)
 - Plaats citaties na feiten, cijfers, stellingen en belangrijke concepten
-- Format: "(Bron, Jaar)" bijvoorbeeld "(Wikipedia, 2024)" of "(CBS, 2023)"
+- Gebruik EXACT dezelfde bronnaam in de tekst als in de lijst (bijv. "(Fotosynthese - Wikipedia, 2024)" i.p.v. alleen "(Wikipedia)")
+- Format: "(Titel, Jaar)" bijvoorbeeld "(Fotosynthese - Wikipedia, 2024)" of "(CBS StatLine, 2023)"
 - Citeer minimaal 5-8 keer in de tekst (mag dezelfde bron meerdere keren zijn)
+- Verwerk gegevens uit de gekozen bron in de zin; geen losse bronplak zonder inhoudelijke verwijzing
 - Voorbeeld: "Fotosynthese is het proces waarbij planten licht omzetten in energie (Kennisnet, 2024)."
 
 STAP 2: Maak de bronnenlijst
 - Verzamel ALLEEN de bronnen die je in stap 1 daadwerkelijk geciteerd hebt
 - De lijst is een INVENTARISATIE van wat je al citeerde, GEEN nieuwe bronnen
+- De titels in de lijst zijn IDENTIEK aan de namen in de inline citaties (1-op-1)
 - Format:
   ## Bronnen
   - [Fotosynthese](https://nl.wikipedia.org/wiki/Fotosynthese) - Wikipedia artikel over fotosynthese (2024)
