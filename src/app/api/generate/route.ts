@@ -27,6 +27,8 @@ interface RequestBody {
   woordenAantal?: number;
   metAfbeeldingen?: boolean;
   afbeeldingType?: string;
+  laatstePlaatjeInfographic?: boolean;
+  metBronnen?: boolean;
   context?: string;
   template?: string;
   customSecties?: TemplateSection[];
@@ -55,8 +57,8 @@ export async function POST(request: NextRequest) {
       woordenAantal: body.woordenAantal || 1500,
       metAfbeeldingen: body.metAfbeeldingen ?? true,
       afbeeldingType: body.afbeeldingType as FormData['afbeeldingType'] || 'stock',
-      laatstePlaatjeInfographic: false,
-      metBronnen: false,
+      laatstePlaatjeInfographic: body.laatstePlaatjeInfographic ?? false,
+      metBronnen: body.metBronnen ?? false,
       context: body.context || '',
       template: body.template as FormData['template'] || 'klassiek',
       customSecties: body.customSecties,
