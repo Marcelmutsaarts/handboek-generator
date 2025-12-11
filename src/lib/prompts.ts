@@ -393,10 +393,34 @@ Streef naar ongeveer ${woordenaantal} woorden.
 - Gebruik "je" en "jij" om de lezer aan te spreken
 - Titels en kopjes: alleen eerste woord met hoofdletter (Nederlandse schrijfwijze), dus NIET "De Franse Revolutie" maar "De Franse revolutie"
 
+## CULTURELE CONTEXT (STANDAARD NEDERLANDS)
+Gebruik ALTIJD Nederlandse context, tenzij het onderwerp of de leerdoelen expliciet anders aangeven:
+
+Voorbeelden & Referenties:
+- Nederlandse steden (Amsterdam, Rotterdam, Utrecht), bedrijven (Albert Heijn, NS, KLM), personen (bekende Nederlanders)
+- Actualiteit en gebeurtenissen uit Nederland
+- Nederlandse geschiedenis en cultuur waar relevant
+
+Meetwaarden & Eenheden:
+- Metrisch stelsel: kilometer (km), kilogram (kg), meter (m), liter (l)
+- Temperatuur in Celsius (°C)
+- Valuta in Euro (€)
+
+Onderwijscontext:
+- Nederlands schoolsysteem: basisschool (groep 1-8), voortgezet onderwijs (VMBO/HAVO/VWO), MBO, HBO, universiteit
+- Nederlandse schoolvakanties, toetsen, examens
+
+Vermijd:
+- Amerikaanse bias (feet, miles, Fahrenheit, dollars, Amerikaanse geschiedenis als standaard)
+- Aanname dat Amerikaanse context universeel is
+- Engels/Amerikaanse spelling of terminologie zonder noodzaak
+
+LET OP: Als het onderwerp inherent internationaal is (bijv. "Amerikaanse Burgeroorlog", "Chinese dynastie") of als in de leerdoelen/context staat "internationale context", dan mag je uiteraard die specifieke context gebruiken.
+
 ## BELANGRIJK
 - Zorg dat alle informatie feitelijk correct is
-- Geef concrete, herkenbare voorbeelden
-- Maak de lesstof toepasbaar en relevant`;
+- Geef concrete, herkenbare voorbeelden uit de Nederlandse context
+- Maak de lesstof toepasbaar en relevant voor Nederlandse leerlingen`;
 
   return prompt;
 }
