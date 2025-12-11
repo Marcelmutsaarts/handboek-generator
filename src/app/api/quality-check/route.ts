@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 export const maxDuration = 120;
 
 interface QualityCheckRequest {
@@ -58,66 +58,29 @@ export async function POST(request: NextRequest) {
 
     const niveauLabel = NIVEAU_LABELS[niveau] || niveau;
 
-    const prompt = `Je bent een ervaren onderwijskundige expert die educatieve content beoordeelt.
+    const prompt = `Beoordeel deze educatieve tekst voor ${niveauLabel}, leerjaar ${leerjaar}.
 
-Analyseer de volgende tekst kritisch op kwaliteit voor ${niveauLabel}, leerjaar ${leerjaar}.
-
-TEKST OM TE BEOORDELEN:
-"""
+TEKST:
 ${content}
-"""
 
-Beoordeel de tekst op deze 4 criteria en geef per criterium:
-- Een score van 1-5 (1=slecht, 5=uitstekend)
-- Concrete feedback met voorbeelden uit de tekst
+Geef scores 1-5 en max 2 concrete feedback punten per criterium:
 
-1. BIAS & INCLUSIVITEIT (score 1-5)
-   - Zijn er gender stereotypen? (bijv. "wetenschappers zijn mannen", "verplegers zijn vrouwen")
-   - Zijn er culturele aannames of vooroordelen?
-   - Zijn voorbeelden divers en inclusief?
-   - Worden personen genderneutraal beschreven waar mogelijk?
+1. BIAS & INCLUSIVITEIT - Gender stereotypen, culturele aannames, diversiteit
+2. HELDERHEID - Taal, zinscomplexiteit, uitleg moeilijke woorden
+3. DIDACTIEK - Structuur, voorbeelden, opbouw
+4. NIVEAU - Taalgebruik en diepgang passend bij niveau
 
-2. HELDERHEID & BEGRIJPELIJKHEID (score 1-5)
-   - Is de taal helder en begrijpelijk?
-   - Zijn zinnen niet te lang of complex?
-   - Worden moeilijke woorden uitgelegd?
-   - Is de tekst logisch opgebouwd?
-
-3. DIDACTISCHE KWALITEIT (score 1-5)
-   - Is de structuur helder en logisch?
-   - Zijn voorbeelden concreet en passend?
-   - Bouwt de tekst goed op van eenvoudig naar complex?
-   - Zijn er voldoende voorbeelden en uitleg?
-
-4. NIVEAU-GESCHIKTHEID (score 1-5)
-   - Past de taal bij ${niveauLabel} leerjaar ${leerjaar}?
-   - Is de diepgang passend bij dit niveau?
-   - Zijn voorbeelden leeftijdsgeschikt?
-   - Is de moeilijkheidsgraad correct?
-
-Antwoord in dit EXACTE JSON formaat (geen extra tekst, alleen JSON):
+JSON (geen extra tekst):
 {
-  "bias": {
-    "score": 4,
-    "feedback": ["Concrete feedback punt 1", "Feedback punt 2"]
-  },
-  "helderheid": {
-    "score": 5,
-    "feedback": ["Concrete feedback punt 1"]
-  },
-  "didactiek": {
-    "score": 4,
-    "feedback": ["Concrete feedback punt 1", "Feedback punt 2"]
-  },
-  "niveauGeschikt": {
-    "score": 5,
-    "feedback": ["Concrete feedback punt 1"]
-  },
-  "samenvatting": "Korte algemene beoordeling in 1-2 zinnen"
+  "bias": {"score": 4, "feedback": ["punt 1", "punt 2"]},
+  "helderheid": {"score": 5, "feedback": ["punt 1"]},
+  "didactiek": {"score": 4, "feedback": ["punt 1", "punt 2"]},
+  "niveauGeschikt": {"score": 5, "feedback": ["punt 1"]},
+  "samenvatting": "1-2 zinnen algemene beoordeling"
 }`;
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 60000);
+    const timeoutId = setTimeout(() => controller.abort(), 90000);
 
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
