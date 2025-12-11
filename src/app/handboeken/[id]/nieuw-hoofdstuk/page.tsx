@@ -1150,7 +1150,7 @@ export default function NieuwHoofdstukPage() {
                         {/* Source verification button - compact (only if metBronnen is enabled) */}
                         {metBronnen && (
                           <button
-                            onClick={handleVerifySources}
+                            onClick={() => handleVerifySources()}
                             disabled={isVerifyingSources || isRegeneratingSources}
                             className="px-3 py-1.5 bg-white border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors text-xs flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
                             title="Controleer of de bronnen echt bestaan en bereikbaar zijn"
