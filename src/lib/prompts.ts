@@ -142,19 +142,23 @@ const LEERJAAR_AANPASSINGEN: Record<string, Record<number, string>> = {
 };
 
 // Template structuur instructies genereren
-function buildTemplateStructure(template: TemplateType, customSecties?: TemplateSection[]): string {
+function buildTemplateStructure(template: TemplateType, customSecties?: TemplateSection[], metBronnen?: boolean): string {
   // Bij custom template, gebruik de custom secties
   if (template === 'custom' && customSecties && customSecties.length > 0) {
     const sectiesText = customSecties
       .map((s) => `## ${s.titel}\n${s.beschrijving}`)
       .join('\n\n');
 
+    const bronnenSectie = metBronnen ? '\n\n## Bronnen\nLijst van 3-5 betrouwbare bronnen in markdown formaat: - [Titel](URL) - Beschrijving' : '';
+
     return `# [Pakkende titel voor het hoofdstuk]
 
-${sectiesText}`;
+${sectiesText}${bronnenSectie}`;
   }
 
   // Voorgedefinieerde template structuren
+  const bronnenSectie = metBronnen ? '\n\n## Bronnen\nLijst van 3-5 betrouwbare bronnen in markdown formaat: - [Titel](URL) - Beschrijving' : '';
+
   const templateStructures: Record<TemplateType, string> = {
     klassiek: `# [Pakkende titel voor het hoofdstuk]
 
@@ -177,7 +181,7 @@ Minimaal 3 opdrachten van oplopende moeilijkheid:
 3. Een uitdagende opdracht
 
 ## Samenvatting
-De belangrijkste punten op een rij (5-7 bullets).`,
+De belangrijkste punten op een rij (5-7 bullets).${bronnenSectie}`,
 
     praktisch: `# [Pakkende titel voor het hoofdstuk]
 
@@ -200,7 +204,7 @@ Waar moet je op letten? Wat gaat vaak mis en hoe voorkom je dat?
 Een of meerdere oefeningen om te praktiseren wat je hebt geleerd.
 
 ## Checklist
-Controlelijst: vink af wat je nu kunt/beheerst.`,
+Controlelijst: vink af wat je nu kunt/beheerst.${bronnenSectie}`,
 
     onderzoek: `# [Pakkende titel voor het hoofdstuk]
 
@@ -220,7 +224,7 @@ Wat hebben we ontdekt? Presenteer de resultaten gestructureerd.
 Beantwoord de onderzoeksvraag op basis van de bevindingen.
 
 ## Discussie
-Wat betekenen deze bevindingen? Welke beperkingen heeft het onderzoek? Welke nieuwe vragen ontstaan?`,
+Wat betekenen deze bevindingen? Welke beperkingen heeft het onderzoek? Welke nieuwe vragen ontstaan?${bronnenSectie}`,
 
     toets: `# [Pakkende titel voor het hoofdstuk]
 
@@ -240,7 +244,7 @@ Typische examenvragen met volledige uitwerking. Laat zien hoe je tot het antwoor
 Vergelijkbare vragen om zelf te oefenen (zonder uitwerking, of met antwoorden onderaan).
 
 ## Tips
-Handige tips voor de toets: waar letten docenten op? Veelgemaakte fouten om te vermijden.`,
+Handige tips voor de toets: waar letten docenten op? Veelgemaakte fouten om te vermijden.${bronnenSectie}`,
 
     custom: `# [Pakkende titel voor het hoofdstuk]
 
@@ -251,7 +255,7 @@ Introductie van het onderwerp.
 De kern van het hoofdstuk.
 
 ## Afsluiting
-Samenvatting en conclusie.`,
+Samenvatting en conclusie.${bronnenSectie}`,
   };
 
   return templateStructures[template] || templateStructures.klassiek;
@@ -395,7 +399,7 @@ Pas de moeilijkheidsgraad, diepgang en voorbeelden aan op dit leerjaar.
     : '';
 
   // Genereer de template structuur
-  const templateStructuur = buildTemplateStructure(template || 'klassiek', customSecties);
+  const templateStructuur = buildTemplateStructure(template || 'klassiek', customSecties, metBronnen);
   const templateNaam = getTemplate(template || 'klassiek')?.naam || 'Klassiek';
 
   const prompt = `Je bent een ervaren onderwijsauteur die educatieve hoofdstukken schrijft. Schrijf een compleet hoofdstuk voor ${niveauInfo.doelgroep}, leerjaar ${leerjaar}.
