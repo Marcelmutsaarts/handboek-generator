@@ -43,6 +43,7 @@ export default function InputForm({ onSubmit, isLoading }: InputFormProps) {
     metAfbeeldingen: true,
     afbeeldingType: 'stock',
     laatstePlaatjeInfographic: false,
+    metBronnen: false,
     context: '',
     template: 'klassiek',
     customSecties: [],

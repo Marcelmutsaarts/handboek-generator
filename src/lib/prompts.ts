@@ -258,7 +258,7 @@ Samenvatting en conclusie.`,
 }
 
 export function buildPrompt(data: FormData): string {
-  const { onderwerp, niveau, leerjaar, leerdoelen, lengte, woordenAantal, metAfbeeldingen, context, template, customSecties } = data;
+  const { onderwerp, niveau, leerjaar, leerdoelen, lengte, woordenAantal, metAfbeeldingen, metBronnen, context, template, customSecties } = data;
   // Gebruik custom woordenaantal als opgegeven, anders fallback naar preset
   // Factor 1.5 omdat AI minder woorden genereert dan gevraagd (tokens vs woorden)
   const woordenaantal = Math.round((woordenAantal || WOORDEN_PER_LENGTE[lengte]) * 1.5);
@@ -357,6 +357,35 @@ Plaats EXACT 4 afbeeldingen op de aangegeven plekken, NIET meer, NIET minder!
 `
     : '';
 
+  const bronnenSection = metBronnen
+    ? `
+## BRONVERMELDING
+Voeg een "Bronnen" sectie toe aan het einde van het hoofdstuk met ECHTE, VERIFIEERBARE bronnen.
+
+KRITISCH BELANGRIJK:
+- Gebruik ALLEEN bronnen die DAADWERKELIJK BESTAAN en verifieerbaar zijn
+- Vermeld GEEN fictieve of verzonnen bronnen
+- Kies betrouwbare bronnen zoals:
+  * Wikipedia artikelen (gebruik volledige URL: https://nl.wikipedia.org/wiki/[artikel])
+  * Wetenschappelijke publicaties en tijdschriften
+  * Officiële overheidswebsites (bijv. rijksoverheid.nl, CBS.nl)
+  * Erkende educatieve websites (bijv. Kennisnet, lesmateriaal.nu)
+  * Gerenommeerde media en encyclopedieën
+
+FORMAAT:
+Plaats bronnen in een lijst onderaan met dit formaat:
+## Bronnen
+- [Titel van de bron](URL) - Korte beschrijving (bijv. auteur, publicatiedatum)
+
+Bijvoorbeeld:
+## Bronnen
+- [Fotosynthese](https://nl.wikipedia.org/wiki/Fotosynthese) - Wikipedia artikel over fotosynthese
+- [Het effect van licht op plantengroei](https://www.kennisnet.nl/artikel/licht-plantengroei) - Kennisnet lesmateriaal
+
+Voeg 3-5 relevante bronnen toe die gebruikt kunnen worden voor verdere studie of verificatie van de informatie in het hoofdstuk.
+`
+    : '';
+
   const leerjaarSection = leerjaarInfo
     ? `
 ## LEERJAAR CONTEXT
@@ -381,7 +410,7 @@ ${niveauInfo.taalrichtlijnen}
 Lever het hoofdstuk in deze exacte structuur. Volg de secties precies zoals hieronder aangegeven:
 
 ${templateStructuur}
-${afbeeldingenSection}
+${afbeeldingenSection}${bronnenSection}
 ## LENGTE
 Streef naar ongeveer ${woordenaantal} woorden.
 

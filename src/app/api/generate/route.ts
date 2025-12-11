@@ -56,6 +56,7 @@ export async function POST(request: NextRequest) {
       metAfbeeldingen: body.metAfbeeldingen ?? true,
       afbeeldingType: body.afbeeldingType as FormData['afbeeldingType'] || 'stock',
       laatstePlaatjeInfographic: false,
+      metBronnen: false,
       context: body.context || '',
       template: body.template as FormData['template'] || 'klassiek',
       customSecties: body.customSecties,

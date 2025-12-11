@@ -121,6 +121,7 @@ export interface FormData {
   metAfbeeldingen: boolean;
   afbeeldingType: AfbeeldingType;
   laatstePlaatjeInfographic: boolean; // bij AI-afbeeldingen: laatste plaatje als infographic
+  metBronnen: boolean; // bronvermelding toevoegen
   context: string; // optioneel: hobby/interessegebied voor personalisatie
   template: TemplateType;
   customSecties?: TemplateSection[]; // alleen bij template === 'custom'

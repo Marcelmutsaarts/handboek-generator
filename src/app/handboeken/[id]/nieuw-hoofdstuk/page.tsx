@@ -6,6 +6,7 @@ import Link from 'next/link';
 import Header from '@/components/Header';
 import ChapterDisplay from '@/components/ChapterDisplay';
 import QualityCheckModal, { QualityReport } from '@/components/QualityCheckModal';
+import SourceVerificationModal, { SourceVerificationReport } from '@/components/SourceVerificationModal';
 import { useAuth } from '@/hooks/useAuth';
 import { createClient } from '@/lib/supabase/client';
 import { Handboek, Hoofdstuk, Lengte, AfbeeldingType, ChapterImage, getTemplate, WOORDEN_PER_LENGTE, HoofdstukPlan } from '@/types';
@@ -44,6 +45,7 @@ export default function NieuwHoofdstukPage() {
   const [woordenAantal, setWoordenAantal] = useState(WOORDEN_PER_LENGTE.medium);
   const [afbeeldingType, setAfbeeldingType] = useState<AfbeeldingType>('stock');
   const [laatstePlaatjeInfographic, setLaatstePlaatjeInfographic] = useState(false);
+  const [metBronnen, setMetBronnen] = useState(false);
 
   // Bepaal of slider afwijkt van preset
   const isCustomWoorden = woordenAantal !== WOORDEN_PER_LENGTE[lengte];
@@ -63,6 +65,11 @@ export default function NieuwHoofdstukPage() {
   const [qualityReport, setQualityReport] = useState<QualityReport | null>(null);
   const [isCheckingQuality, setIsCheckingQuality] = useState(false);
   const [isImproving, setIsImproving] = useState(false);
+
+  // Source verification state
+  const [showSourceModal, setShowSourceModal] = useState(false);
+  const [sourceReport, setSourceReport] = useState<SourceVerificationReport | null>(null);
+  const [isVerifyingSources, setIsVerifyingSources] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -307,6 +314,8 @@ export default function NieuwHoofdstukPage() {
         woordenAantal,
         metAfbeeldingen: afbeeldingType !== 'geen',
         afbeeldingType,
+        laatstePlaatjeInfographic,
+        metBronnen,
         context: handboek.context || '',
         template: handboek.template || 'klassiek',
         customSecties: handboek.custom_secties || [],
@@ -557,6 +566,74 @@ export default function NieuwHoofdstukPage() {
     } finally {
       setIsImproving(false);
     }
+  };
+
+  const extractSources = (generatedContent: string): { title: string; url: string }[] => {
+    const sources: { title: string; url: string }[] = [];
+
+    // Find ## Bronnen section
+    const bronnenMatch = generatedContent.match(/## Bronnen\n([\s\S]*?)(?=\n##|$)/);
+    if (!bronnenMatch) return sources;
+
+    const bronnenSection = bronnenMatch[1];
+
+    // Extract markdown links: - [Title](URL)
+    const linkRegex = /- \[([^\]]+)\]\(([^)]+)\)/g;
+    let match;
+
+    while ((match = linkRegex.exec(bronnenSection)) !== null) {
+      sources.push({
+        title: match[1],
+        url: match[2],
+      });
+    }
+
+    return sources;
+  };
+
+  const handleVerifySources = async () => {
+    if (!content || !metBronnen) return;
+
+    const sources = extractSources(content);
+
+    if (sources.length === 0) {
+      setError('Geen bronnen gevonden in het hoofdstuk');
+      return;
+    }
+
+    setShowSourceModal(true);
+    setIsVerifyingSources(true);
+    setSourceReport(null);
+
+    try {
+      const response = await fetch('/api/verify-sources', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ sources }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Bronverificatie mislukt');
+      }
+
+      const report: SourceVerificationReport = await response.json();
+      setSourceReport(report);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Bronverificatie mislukt');
+      setShowSourceModal(false);
+    } finally {
+      setIsVerifyingSources(false);
+    }
+  };
+
+  const handleRetryGeneration = () => {
+    setShowSourceModal(false);
+    setSourceReport(null);
+    // Reset to form state to allow regeneration
+    setPageState('form');
   };
 
   if (authLoading || pageState === 'loading') {
@@ -840,6 +917,27 @@ export default function NieuwHoofdstukPage() {
                 )}
               </div>
 
+              {/* Bronvermelding */}
+              <div>
+                <label className="flex items-start gap-3 p-4 bg-gradient-to-r from-green-50 to-teal-50 border border-green-200 rounded-lg cursor-pointer hover:border-green-300 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={metBronnen}
+                    onChange={(e) => setMetBronnen(e.target.checked)}
+                    className="mt-0.5 h-5 w-5 rounded border-gray-300 text-primary focus:ring-primary"
+                  />
+                  <div className="flex-1">
+                    <span className="font-medium text-foreground flex items-center gap-2">
+                      <span className="text-lg">📚</span>
+                      Bronvermelding toevoegen
+                    </span>
+                    <span className="block text-xs text-secondary mt-1">
+                      Voeg bronnen toe aan het hoofdstuk. Bronnen worden geverifieerd op echtheid.
+                    </span>
+                  </div>
+                </label>
+              </div>
+
               {/* Submit */}
               <div className="flex flex-col gap-3 pt-4">
                 <button
@@ -870,7 +968,7 @@ export default function NieuwHoofdstukPage() {
               </div>
             )}
 
-            {/* Quality check & Save buttons */}
+            {/* Quality check & Source verification & Save buttons */}
             {pageState === 'result' && !isStreaming && !isLoadingImages && (
               <>
                 {/* Quality check button */}
@@ -888,6 +986,25 @@ export default function NieuwHoofdstukPage() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
                       Kwaliteit controleren
+                    </button>
+                  </div>
+                )}
+
+                {/* Source verification button (only if metBronnen is enabled) */}
+                {!savedHoofdstukId && metBronnen && (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-center justify-between">
+                    <div>
+                      <div className="text-green-700 text-sm font-medium">Bronnen verifiëren?</div>
+                      <div className="text-green-600 text-xs mt-0.5">Controleer of de bronnen echt bestaan en bereikbaar zijn</div>
+                    </div>
+                    <button
+                      onClick={handleVerifySources}
+                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm flex items-center gap-2"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      Bronnen verifiëren
                     </button>
                   </div>
                 )}
@@ -957,6 +1074,16 @@ export default function NieuwHoofdstukPage() {
           setShowQualityModal(false);
           // Gebruiker kan nu handmatig bewerken via ChapterEditor
         }}
+      />
+
+      {/* Source Verification Modal */}
+      <SourceVerificationModal
+        isOpen={showSourceModal}
+        report={sourceReport}
+        isLoading={isVerifyingSources}
+        onClose={() => setShowSourceModal(false)}
+        onAccept={() => setShowSourceModal(false)}
+        onRetry={handleRetryGeneration}
       />
     </div>
   );
