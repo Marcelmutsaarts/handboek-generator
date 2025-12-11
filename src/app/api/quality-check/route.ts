@@ -7,6 +7,7 @@ interface QualityCheckRequest {
   content: string;
   niveau: string;
   leerjaar: number;
+  context?: string;
 }
 
 interface QualityScore {
@@ -38,7 +39,7 @@ const NIVEAU_LABELS: Record<string, string> = {
 export async function POST(request: NextRequest) {
   try {
     const body: QualityCheckRequest = await request.json();
-    const { content, niveau, leerjaar } = body;
+    const { content, niveau, leerjaar, context } = body;
 
     if (!content || !niveau || !leerjaar) {
       return NextResponse.json(
@@ -58,14 +59,18 @@ export async function POST(request: NextRequest) {
 
     const niveauLabel = NIVEAU_LABELS[niveau] || niveau;
 
-    const prompt = `Beoordeel deze educatieve tekst voor ${niveauLabel}, leerjaar ${leerjaar}.
+    const contextNote = context
+      ? `\n\nLET OP: Dit hoofdstuk is gepersonaliseerd met context "${context}". Voorbeelden en vergelijkingen gerelateerd aan "${context}" zijn GEWENST en geen probleem voor bias of didactiek.`
+      : '';
+
+    const prompt = `Beoordeel deze educatieve tekst voor ${niveauLabel}, leerjaar ${leerjaar}.${contextNote}
 
 TEKST:
 ${content}
 
 Geef scores 1-5 en max 2 concrete feedback punten per criterium:
 
-1. BIAS & INCLUSIVITEIT - Gender stereotypen, culturele aannames, diversiteit
+1. BIAS & INCLUSIVITEIT - Gender stereotypen, culturele aannames, diversiteit (niet: gepersonaliseerde voorbeelden)
 2. HELDERHEID - Taal, zinscomplexiteit, uitleg moeilijke woorden
 3. DIDACTIEK - Structuur, voorbeelden, opbouw
 4. NIVEAU - Taalgebruik en diepgang passend bij niveau

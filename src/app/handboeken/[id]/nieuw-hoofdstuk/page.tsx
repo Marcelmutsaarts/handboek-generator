@@ -515,6 +515,7 @@ export default function NieuwHoofdstukPage() {
           content,
           niveau: handboek.niveau,
           leerjaar: handboek.leerjaar,
+          context: handboek.context,
         }),
       });
 
@@ -563,7 +564,11 @@ export default function NieuwHoofdstukPage() {
       setShowQualityModal(false);
       setQualityReport(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Verbeteren mislukt');
+      const errorMessage = err instanceof Error ? err.message : 'Verbeteren mislukt';
+      setError(errorMessage);
+      setShowQualityModal(false);
+      setQualityReport(null);
+      alert(`Fout bij verbeteren: ${errorMessage}`);
     } finally {
       setIsImproving(false);
     }
@@ -667,29 +672,45 @@ export default function NieuwHoofdstukPage() {
 
     const bronnenSection = bronnenMatch[1];
     let updatedBronnenSection = bronnenSection;
+    let updatedContent = content;
 
-    // Remove each bad source from the bronnen section only
+    // Remove each bad source
     badSources.forEach((badSource) => {
       // Escape special regex characters in URL
       const escapedUrl = badSource.url.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const escapedTitle = badSource.title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-      // Match the entire line with this URL
-      // Format: - [Title](URL) or - [Title](URL) - Description
-      const pattern = new RegExp(`^- \\[[^\\]]*\\]\\(${escapedUrl}\\)[^\\n]*\\n?`, 'gm');
-
+      // 1. Remove from bronnen section
+      const bronnenPattern = new RegExp(`^- \\[[^\\]]*\\]\\(${escapedUrl}\\)[^\\n]*\\n?`, 'gm');
       const beforeLength = updatedBronnenSection.length;
-      updatedBronnenSection = updatedBronnenSection.replace(pattern, '');
+      updatedBronnenSection = updatedBronnenSection.replace(bronnenPattern, '');
       const afterLength = updatedBronnenSection.length;
 
       if (beforeLength === afterLength) {
         console.warn('Bron niet gevonden in lijst:', badSource.url);
       } else {
-        console.log('Bron verwijderd:', badSource.url);
+        console.log('Bron verwijderd uit lijst:', badSource.url);
+      }
+
+      // 2. Remove inline citations from the text
+      // Match patterns like: (Wikipedia, 2024) or (CBS, 2023) or (Kennisnet, 2024)
+      // Extract the name from the title (first word or before comma/space)
+      const sourceName = badSource.title.split(/[,\s-]/)[0];
+      const inlineCitationPattern = new RegExp(`\\s*\\(${escapedTitle}[^)]*\\)`, 'gi');
+      const inlineCitationPattern2 = new RegExp(`\\s*\\(${sourceName}[^)]*\\)`, 'gi');
+
+      const beforeInline = updatedContent.length;
+      updatedContent = updatedContent.replace(inlineCitationPattern, '');
+      updatedContent = updatedContent.replace(inlineCitationPattern2, '');
+      const afterInline = updatedContent.length;
+
+      if (beforeInline !== afterInline) {
+        console.log('Inline citaties verwijderd voor:', badSource.title);
       }
     });
 
-    // Replace the bronnen section in the full content
-    const updatedContent = content.replace(
+    // Replace the bronnen section in the updated content
+    updatedContent = updatedContent.replace(
       /##\s*Bronnen\s*\n[\s\S]*?(?=\n##|$)/i,
       `## Bronnen\n${updatedBronnenSection}`
     );
@@ -697,7 +718,7 @@ export default function NieuwHoofdstukPage() {
     // Only update if something actually changed
     if (updatedContent !== content) {
       setContent(updatedContent);
-      console.log('Content bijgewerkt, bronnen verwijderd');
+      console.log('Content bijgewerkt: bronnen en citaties verwijderd');
     } else {
       console.warn('Geen wijzigingen aangebracht');
     }
