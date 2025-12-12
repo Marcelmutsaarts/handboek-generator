@@ -6,6 +6,16 @@ import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
 import rehypeStringify from 'rehype-stringify';
 import katex from 'katex';
 
+function decodeBasicEntities(text: string): string {
+  return text
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&nbsp;/g, ' ');
+}
+
 /**
  * Sanitize schema that allows safe HTML elements while blocking XSS vectors
  *
@@ -141,7 +151,10 @@ export async function renderSafeMarkdown(markdown: string): Promise<string> {
 function convertHtmlToMarkdown(text: string): string {
   if (!text) return text;
 
-  return text
+  // Decode entity-geëncodeerde tags (&lt;strong&gt;, &lt;em&gt;, …)
+  const decoded = decodeBasicEntities(text);
+
+  return decoded
     // Bold: <strong>, <b> → **text**
     .replace(/<strong>(.*?)<\/strong>/gi, '**$1**')
     .replace(/<b>(.*?)<\/b>/gi, '**$1**')

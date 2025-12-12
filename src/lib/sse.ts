@@ -22,6 +22,17 @@ export interface SSEMessage {
   error?: string;
 }
 
+// Decode een beperkte set HTML entities zodat we ook &lt;strong&gt; kunnen normaliseren
+function decodeBasicEntities(text: string): string {
+  return text
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&nbsp;/g, ' ');
+}
+
 /**
  * Sanitize HTML tags to Markdown equivalents
  *
@@ -31,7 +42,10 @@ export interface SSEMessage {
 export function sanitizeHtmlToMarkdown(text: string): string {
   if (!text) return text;
 
-  return text
+  // Eerst basis-entities decoderen zodat &lt;strong&gt; ook wordt meegenomen
+  const decoded = decodeBasicEntities(text);
+
+  return decoded
     // Bold: <strong>, <b> → **text**
     .replace(/<strong>(.*?)<\/strong>/gi, '**$1**')
     .replace(/<b>(.*?)<\/b>/gi, '**$1**')

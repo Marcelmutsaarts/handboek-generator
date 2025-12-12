@@ -22,6 +22,9 @@ export async function consumeSSEFromReader(
 
     buffer += decoder.decode(value, { stream: true });
 
+    // Normaliseer CRLF → LF zodat delimiter-detectie robuust blijft
+    buffer = buffer.replace(/\r\n/g, '\n');
+
     // Process complete SSE events. SSE events are delimited by a blank line.
     while (true) {
       const sepIndex = buffer.indexOf('\n\n');
@@ -50,6 +53,28 @@ export async function consumeSSEFromReader(
         onData(JSON.parse(dataStr));
       } catch {
         // Ignore malformed events (some providers send keep-alives/comments)
+      }
+    }
+  }
+
+  // Verwerk eventueel resterende data als laatste event (voor providers zonder afsluitende \n\n)
+  if (buffer.trim().length > 0) {
+    const rawEvent = buffer;
+    const dataLines: string[] = [];
+    for (const line of rawEvent.split('\n')) {
+      if (line.startsWith('data:')) {
+        const after = line.slice(5);
+        dataLines.push(after.startsWith(' ') ? after.slice(1) : after);
+      }
+    }
+    if (dataLines.length > 0) {
+      const dataStr = dataLines.join('\n');
+      if (dataStr !== '[DONE]') {
+        try {
+          onData(JSON.parse(dataStr));
+        } catch {
+          // negeren
+        }
       }
     }
   }
