@@ -7,6 +7,7 @@ import ChapterDisplay from '@/components/ChapterDisplay';
 import Header from '@/components/Header';
 import { FormData, ChapterImage, AfbeeldingType } from '@/types';
 import { getApiKeyHeader } from '@/hooks/useApiKey';
+import { consumeSSEFromReader } from '@/lib/sseClient';
 
 type AppState = 'input' | 'generating' | 'result';
 
@@ -50,7 +51,6 @@ export default function Home() {
       const reader = response.body?.getReader();
       if (!reader) throw new Error('Geen response stream');
 
-      const decoder = new TextDecoder();
       lastFlushRef.current = performance.now();
       let fullContent = '';
       const flushContent = () => {
@@ -58,44 +58,34 @@ export default function Home() {
         lastFlushRef.current = performance.now();
       };
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+      await consumeSSEFromReader(reader, (data) => {
+        if (data.type === 'prompt') {
+          setPrompt(data.content);
+          return;
+        }
 
-        const chunk = decoder.decode(value);
-        const lines = chunk.split('\n');
+        if (data.type === 'content') {
+          fullContent += data.content || '';
+          const now = performance.now();
+          if (now - lastFlushRef.current > 120) {
+            flushContent();
+          }
+          return;
+        }
 
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            try {
-              const data = JSON.parse(line.slice(6));
+        if (data.type === 'done') {
+          flushContent();
+          setIsStreaming(false);
+          setAppState('result');
 
-              if (data.type === 'prompt') {
-                setPrompt(data.content);
-              } else if (data.type === 'content') {
-                fullContent += data.content;
-                const now = performance.now();
-                if (now - lastFlushRef.current > 120) {
-                  flushContent();
-                }
-              } else if (data.type === 'done') {
-                flushContent();
-                setIsStreaming(false);
-                setAppState('result');
-
-                // Fetch images based on type
-                if (formData.afbeeldingType === 'stock') {
-                  fetchStockImages(fullContent);
-                } else if (formData.afbeeldingType === 'ai') {
-                  fetchAiImages(fullContent, formData.onderwerp, formData.laatstePlaatjeInfographic);
-                }
-              }
-            } catch {
-              // Ignore parsing errors for incomplete chunks
-            }
+          // Fetch images based on type
+          if (formData.afbeeldingType === 'stock') {
+            fetchStockImages(fullContent);
+          } else if (formData.afbeeldingType === 'ai') {
+            fetchAiImages(fullContent, formData.onderwerp, formData.laatstePlaatjeInfographic);
           }
         }
-      }
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Er ging iets mis');
       setIsStreaming(false);

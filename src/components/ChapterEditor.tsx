@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { getApiKeyHeader } from '@/hooks/useApiKey';
+import { consumeSSEFromReader } from '@/lib/sseClient';
 
 interface ChapterEditorProps {
   content: string;
@@ -76,30 +77,14 @@ export default function ChapterEditor({
       const reader = response.body?.getReader();
       if (!reader) throw new Error('No response body');
 
-      const decoder = new TextDecoder();
       let fullContent = '';
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        const chunk = decoder.decode(value);
-        const lines = chunk.split('\n');
-
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            try {
-              const data = JSON.parse(line.slice(6));
-              if (data.type === 'content') {
-                fullContent += data.content;
-                setRewritePreview(fullContent);
-              }
-            } catch {
-              // Ignore
-            }
-          }
+      await consumeSSEFromReader(reader, (data) => {
+        if (data.type === 'content') {
+          fullContent += data.content || '';
+          setRewritePreview(fullContent);
         }
-      }
+      });
     } catch (error) {
       console.error('Rewrite error:', error);
       alert('Er ging iets mis bij het herschrijven.');
