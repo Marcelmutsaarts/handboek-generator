@@ -147,7 +147,7 @@ export default function NieuwHoofdstukPage() {
 
       if (handboekError || !handboekData) {
         setError('Handboek niet gevonden');
-        setPageState('form');
+        setPageState((prev) => (prev === 'loading' ? 'form' : prev));
         return;
       }
 
@@ -164,7 +164,8 @@ export default function NieuwHoofdstukPage() {
         setEerdereHoofdstukken(hoofdstukkenData);
       }
 
-      setPageState('form');
+      // Only set to 'form' if no draft was restored (content is empty)
+      setPageState((prev) => (prev === 'loading' ? 'form' : prev));
     };
 
     if (user) {
