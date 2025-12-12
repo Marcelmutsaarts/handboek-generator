@@ -144,8 +144,14 @@ const LEERJAAR_AANPASSINGEN: Record<string, Record<number, string>> = {
 
 // Template structuur instructies genereren
 function buildTemplateStructure(template: TemplateType, customSecties?: TemplateSection[], metBronnen?: boolean): string {
-  // Bij custom template, gebruik de custom secties
+  // Bij custom template, gebruik de custom secties met kwaliteitsinstructies
   if (template === 'custom' && customSecties && customSecties.length > 0) {
+    const customInstructionBlock = `**KWALITEITSEISEN PER SECTIE:**
+- Elke sectie eindigt met 2 korte checkvragen waarmee de lezer kan toetsen of de stof begrepen is
+- Elke sectie bevat minstens 1 concreet voorbeeld (situatie, casus, of scenario)
+- Houd secties bondig: streef naar max ~300 woorden per sectie (soft cap, mag iets overschreden worden indien nodig)
+
+`;
     const sectiesText = customSecties
       .map((s) => `## ${s.titel}\n${s.beschrijving}`)
       .join('\n\n');
@@ -154,7 +160,7 @@ function buildTemplateStructure(template: TemplateType, customSecties?: Template
 
     return `# [Pakkende titel voor het hoofdstuk]
 
-${sectiesText}${bronnenSectie}`;
+${customInstructionBlock}${sectiesText}${bronnenSectie}`;
   }
 
   // Voorgedefinieerde template structuren
@@ -169,6 +175,10 @@ Een korte, motiverende inleiding die de relevantie van het onderwerp duidelijk m
 ## Theorie
 Heldere uitleg van de kernconcepten en belangrijkste begrippen.
 
+### Kernbegrippen
+Geef precies 5 kernbegrippen als lijst in dit formaat:
+- **[Term]**: [Eén zin definitie die helder en bondig is]
+
 ## Voorbeelden
 Concrete voorbeelden die de theorie verduidelijken en toepasbaar maken.
 
@@ -181,6 +191,14 @@ Minimaal 3 opdrachten van oplopende moeilijkheid:
 2. Een opdracht die analyse vraagt
 3. Een uitdagende opdracht
 
+## Check jezelf
+5 korte toetsvragen om te controleren of je de stof begrijpt. Gebruik dit formaat:
+1. [Vraag]
+   *Antwoord: [Kort antwoord in 1-2 zinnen]*
+2. [Vraag]
+   *Antwoord: [Kort antwoord in 1-2 zinnen]*
+(etc.)
+
 ## Samenvatting
 De belangrijkste punten op een rij (5-7 bullets).${bronnenSectie}`,
 
@@ -189,11 +207,26 @@ De belangrijkste punten op een rij (5-7 bullets).${bronnenSectie}`,
 ## Doel
 Wat ga je kunnen na dit hoofdstuk? Formuleer dit concreet en meetbaar.
 
+### Succescriteria
+Geef precies 3 bullets waarmee de leerling kan bepalen of het doel bereikt is:
+- [Criterium 1: wat moet je kunnen aantonen?]
+- [Criterium 2: wat moet je kunnen uitvoeren?]
+- [Criterium 3: wat moet het resultaat zijn?]
+
 ## Benodigdheden
 Wat heb je nodig om te beginnen? (materialen, voorkennis, tools)
 
 ## Stap voor stap
-Duidelijke, genummerde instructies die je kunt volgen. Elke stap is een concrete actie.
+Duidelijke, genummerde instructies. Elke stap bevat drie onderdelen:
+1. **Actie**: [Wat doe je?]
+   - *Verwacht resultaat*: [Wat zie/hoor/merk je als het goed gaat?]
+   - *Let op*: [Veelgemaakte fout en hoe je die voorkomt]
+
+2. **Actie**: [Wat doe je?]
+   - *Verwacht resultaat*: [Wat zie/hoor/merk je als het goed gaat?]
+   - *Let op*: [Veelgemaakte fout en hoe je die voorkomt]
+
+(Ga zo door voor alle stappen)
 
 ## Uitleg
 Waarom werkt het zo? Leg de achterliggende principes uit.
@@ -205,7 +238,12 @@ Waar moet je op letten? Wat gaat vaak mis en hoe voorkom je dat?
 Een of meerdere oefeningen om te praktiseren wat je hebt geleerd.
 
 ## Checklist
-Controlelijst: vink af wat je nu kunt/beheerst.${bronnenSectie}`,
+5 ja/nee beheersingscontroles. Gebruik dit formaat:
+- [ ] [Vaardigheid 1] — *Zo niet, herlees: [sectie/onderwerp]*
+- [ ] [Vaardigheid 2] — *Zo niet, herlees: [sectie/onderwerp]*
+- [ ] [Vaardigheid 3] — *Zo niet, herlees: [sectie/onderwerp]*
+- [ ] [Vaardigheid 4] — *Zo niet, herlees: [sectie/onderwerp]*
+- [ ] [Vaardigheid 5] — *Zo niet, herlees: [sectie/onderwerp]*${bronnenSectie}`,
 
     onderzoek: `# [Pakkende titel voor het hoofdstuk]
 
@@ -218,11 +256,36 @@ Wat weet je al over dit onderwerp? Activeer bestaande kennis en leg verbanden.
 ## Bronnen & methode
 Welke bronnen gebruiken we? Hoe gaan we het onderzoeken? (experimenten, literatuur, interviews, etc.)
 
+### Hypothese/verwachting
+Formuleer wat je verwacht te vinden en waarom:
+- *Hypothese*: [Wat verwacht je als antwoord op de onderzoeksvraag?]
+- *Reden*: [Waarom verwacht je dit?]
+
+### Operationalisatie
+Maak concreet wat je gaat meten of observeren:
+- Wat meten/observeren we precies?
+- Hoe meten/observeren we dit? (methode, instrument)
+- Wanneer weten we of de hypothese klopt?
+
 ## Bevindingen
-Wat hebben we ontdekt? Presenteer de resultaten gestructureerd.
+Wat hebben we ontdekt? Presenteer elke bevinding gestructureerd:
+
+**Bevinding 1**: [Wat heb je gevonden?]
+- *Bewijsvorm*: [data / citaat / observatie / voorbeeld — kies één en geef het bewijs]
+
+**Bevinding 2**: [Wat heb je gevonden?]
+- *Bewijsvorm*: [data / citaat / observatie / voorbeeld — kies één en geef het bewijs]
+
+(Ga zo door voor alle bevindingen)
 
 ## Conclusie
-Beantwoord de onderzoeksvraag op basis van de bevindingen.
+### Antwoord in één zin
+[Beantwoord de onderzoeksvraag direct en bondig]
+
+### Onderbouwing
+- [Argument/bewijs 1 dat het antwoord ondersteunt]
+- [Argument/bewijs 2 dat het antwoord ondersteunt]
+- [Argument/bewijs 3 dat het antwoord ondersteunt]
 
 ## Discussie
 Wat betekenen deze bevindingen? Welke beperkingen heeft het onderzoek? Welke nieuwe vragen ontstaan?${bronnenSectie}`,
@@ -233,16 +296,43 @@ Wat betekenen deze bevindingen? Welke beperkingen heeft het onderzoek? Welke nie
 Dit moet je kennen en kunnen na dit hoofdstuk. Formuleer als "Je kunt..." statements.
 
 ## Kernbegrippen
-Belangrijke termen met korte, heldere definities. Presenteer als overzichtelijke lijst.
+5 belangrijke termen met definities én veelvoorkomende verwarring. Gebruik dit formaat:
+- **[Term 1]**: [Korte, heldere definitie]
+  - *Vaak verward met*: [ander begrip] — [één zin waarin het verschil wordt uitgelegd]
+- **[Term 2]**: [Korte, heldere definitie]
+  - *Vaak verward met*: [ander begrip] — [één zin waarin het verschil wordt uitgelegd]
+(etc. voor 5 termen)
 
 ## Theorie samengevat
 Beknopt maar volledig overzicht van alle belangrijke stof.
 
 ## Voorbeeldvragen
-Typische examenvragen met volledige uitwerking. Laat zien hoe je tot het antwoord komt.
+Typische examenvragen met volledige uitwerking. Toon expliciet de denkstappen:
+
+**Vraag 1**: [De examenvraag]
+
+*Denkstappen:*
+1. [Stap 1: Wat is de eerste stap in je redenering?]
+2. [Stap 2: Hoe kom je verder?]
+3. [Stap 3: Hoe kom je tot het antwoord?]
+
+*Antwoord*: [Het volledige antwoord]
+
+(Herhaal voor meerdere voorbeeldvragen)
 
 ## Oefenopgaven
-Vergelijkbare vragen om zelf te oefenen (zonder uitwerking, of met antwoorden onderaan).
+Vergelijkbare vragen om zelf te oefenen:
+1. [Oefenvraag 1]
+2. [Oefenvraag 2]
+3. [Oefenvraag 3]
+(etc.)
+
+### Antwoorden
+Korte antwoorden op de oefenopgaven:
+1. [Antwoord 1]
+2. [Antwoord 2]
+3. [Antwoord 3]
+(etc.)
 
 ## Tips
 Handige tips voor de toets: waar letten docenten op? Veelgemaakte fouten om te vermijden.${bronnenSectie}`,
@@ -377,8 +467,12 @@ Plaats EXACT 4 afbeeldingen op de aangegeven plekken, NIET meer, NIET minder!
     return `${config.aantal} bronnen van ${config.complexiteit}`;
   };
 
+  // Bepaal of niveau inline citaties nodig heeft (havo en hoger)
+  const niveauMetInlineCitaties = ['havo', 'vwo', 'mbo', 'hbo', 'uni'].includes(niveau);
+
   const bronnenSection = metBronnen
-    ? `
+    ? niveauMetInlineCitaties
+      ? `
 ## BRONVERMELDING (INLINE + LIJST)
 
 DOEL:
@@ -420,6 +514,35 @@ CONTROLE - VOOR JE BRONNENLIJST MAAKT, VRAAG JEZELF AF:
 ❌ Staat "Wikipedia Software" in mijn lijst? Check: heb ik "(Wikipedia, ...)" over software in de tekst? NEE → Niet toevoegen!
 ✅ Heb ik "(Kennisnet, 2024)" in de tekst? JA → Voeg Kennisnet toe aan de lijst
 ✅ Elke bron in de lijst MOET letterlijk geciteerd zijn in de tekst met "(Naam, Jaar)"
+`
+      : `
+## BRONVERMELDING (ALLEEN LIJST, GEEN INLINE CITATIES)
+
+BELANGRIJK VOOR DIT NIVEAU:
+Gebruik GEEN inline citaties in de tekst. Dit maakt de tekst beter leesbaar voor jongere leerlingen.
+
+DOEL:
+Voeg ${getBronnenAantal(niveau)} toe als bronnenlijst aan het EINDE van het hoofdstuk.
+
+BETROUWBARE BRONNEN:
+- Gebruik ALLEEN bronnen die DAADWERKELIJK BESTAAN en publiek toegankelijk zijn
+- Kies bronnen die specifiek over "${onderwerp}" gaan
+- Focus op educatieve, kindvriendelijke bronnen
+- Kies uit:
+  * Wikipedia artikelen (simpele versie waar mogelijk)
+  * Educatieve websites (Kennisnet, Wikikids, Schooltv)
+  * Kindernieuwssites (NOS Jeugdjournaal, Klokhuis)
+  * Officiële educatieve bronnen
+
+FORMAT:
+Plaats aan het einde van het hoofdstuk:
+
+## Bronnen
+Hier vind je meer informatie:
+- [Titel](URL) - Korte beschrijving in kindvriendelijke taal
+- [Titel](URL) - Korte beschrijving in kindvriendelijke taal
+
+Let op: GEEN "(bron, jaar)" citaties in de lopende tekst!
 `
     : '';
 
