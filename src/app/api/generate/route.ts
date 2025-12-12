@@ -3,6 +3,7 @@ import { buildPrompt, buildPromptWithContext } from '@/lib/prompts';
 import { FormData, TemplateSection } from '@/types';
 import { parseSSEStream, fallbackToJSON, extractErrorMessage } from '@/lib/sse';
 import { OPENROUTER_TEXT_TIMEOUT_MS, createTimeoutController, logTimeoutAbort } from '@/lib/apiLimits';
+import { estimateMaxTokens, explainTokenBudget } from '@/lib/tokenBudget';
 
 const MODEL = 'google/gemini-3-pro-preview';
 
@@ -80,6 +81,14 @@ export async function POST(request: NextRequest) {
       ? buildPromptWithContext(formData, eerdereHoofdstukken)
       : buildPrompt(formData);
 
+    // Estimate max_tokens dynamically based on request parameters
+    const maxTokens = estimateMaxTokens(formData, eerdereHoofdstukken.length);
+
+    // Log token budget decision in development
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[Generate] Token budget:', explainTokenBudget(maxTokens, formData));
+    }
+
     // Create streaming response via OpenRouter with timeout
     const controller = createTimeoutController(OPENROUTER_TEXT_TIMEOUT_MS);
 
@@ -101,7 +110,7 @@ export async function POST(request: NextRequest) {
               content: prompt,
             },
           ],
-          max_tokens: 8192,
+          max_tokens: maxTokens,
           stream: true,
         }),
         signal: controller.signal,

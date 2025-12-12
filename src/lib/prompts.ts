@@ -1,4 +1,5 @@
 import { FormData, TemplateType, TemplateSection, getTemplate, TEMPLATES, WOORDEN_PER_LENGTE } from '@/types';
+import { getLengthGuidance } from '@/lib/tokenBudget';
 
 const NIVEAU_BESCHRIJVING: Record<string, { doelgroep: string; taalrichtlijnen: string }> = {
   po_onder: {
@@ -487,7 +488,10 @@ LET OP: Als het onderwerp inherent internationaal is (bijv. "Amerikaanse Burgero
 - Geef concrete, herkenbare voorbeelden uit de Nederlandse context
 - Maak de lesstof toepasbaar en relevant voor Nederlandse leerlingen`;
 
-  return prompt;
+  // Add explicit length guidance (non-breaking: appended at the end)
+  const lengthGuidance = getLengthGuidance(data);
+
+  return prompt + lengthGuidance;
 }
 
 export function getPromptForDisplay(data: FormData): string {
