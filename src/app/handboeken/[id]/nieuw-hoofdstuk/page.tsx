@@ -13,6 +13,7 @@ import { createClient } from '@/lib/supabase/client';
 import { Handboek, Hoofdstuk, Lengte, AfbeeldingType, ChapterImage, getTemplate, WOORDEN_PER_LENGTE, HoofdstukPlan } from '@/types';
 import { getApiKeyHeader } from '@/hooks/useApiKey';
 import { consumeSSEFromReader } from '@/lib/sseClient';
+import { sanitizeHtmlToMarkdown } from '@/lib/htmlToMarkdown';
 
 const LENGTES: { value: Lengte; label: string; description: string; woorden: number }[] = [
   { value: 'kort', label: 'Kort', description: '~800 woorden', woorden: 800 },
@@ -382,14 +383,17 @@ export default function NieuwHoofdstukPage() {
         }
 
         if (data.type === 'done') {
-          flushContent();
+          // Sanitize the full content client-side to handle HTML tags
+          // that may have been split across streaming chunks
+          const sanitizedContent = sanitizeHtmlToMarkdown(fullContent);
+          setContent(sanitizedContent);
           setIsStreaming(false);
           setPageState('result');
 
           if (afbeeldingType === 'stock') {
-            fetchStockImages(fullContent, onderwerp);
+            fetchStockImages(sanitizedContent, onderwerp);
           } else if (afbeeldingType === 'ai') {
-            fetchAiImages(fullContent, onderwerp, laatstePlaatjeInfographic);
+            fetchAiImages(sanitizedContent, onderwerp, laatstePlaatjeInfographic);
           }
         }
       });

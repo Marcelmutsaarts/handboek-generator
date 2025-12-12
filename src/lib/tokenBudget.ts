@@ -30,10 +30,10 @@ const CHARS_PER_TOKEN = 4;
 /**
  * Safety margins and limits
  */
-const SAFETY_MARGIN_PERCENTAGE = 0.35; // 35% extra for formatting, structure (increased for richer templates)
-const MIN_MAX_TOKENS = 800; // Minimum reasonable output
-const DEFAULT_MAX_TOKENS = 2500; // Sensible default (increased for structured templates)
-const ABSOLUTE_MAX_TOKENS = 16384; // Hard cap - supports up to ~5000 words with full template overhead
+const SAFETY_MARGIN_PERCENTAGE = 0.50; // 50% extra for formatting, structure, examples, exercises
+const MIN_MAX_TOKENS = 1500; // Minimum reasonable output for educational content
+const DEFAULT_MAX_TOKENS = 4000; // Sensible default for structured educational chapters
+const ABSOLUTE_MAX_TOKENS = 32000; // Hard cap - supports up to ~10000 words with full template overhead
 
 /**
  * Estimate max_tokens for text generation based on request parameters
@@ -76,19 +76,19 @@ export function estimateMaxTokens(
     // 4. Add overhead for structure and features
     let overhead = 0;
 
-    // Section headers and formatting (~80 tokens per section - increased for richer templates)
-    overhead += sectionCount * 80;
+    // Section headers and formatting (~150 tokens per section for rich educational content)
+    overhead += sectionCount * 150;
 
     // Additional overhead for structured template elements (Kernbegrippen, Check jezelf, etc.)
-    // These templates now require more structured output
+    // Educational templates require substantial structured output with examples, exercises, etc.
     const templateOverhead: Record<string, number> = {
-      klassiek: 400,  // Kernbegrippen (5) + Check jezelf (5 Q&A)
-      praktisch: 500, // Succescriteria + structured steps + mastery checklist
-      onderzoek: 450, // Hypothese + Operationalisatie + structured findings + conclusion
-      toets: 500,     // Verward-met + denkstappen + Antwoorden block
-      custom: 300,    // Quality instruction block + check questions
+      klassiek: 1500,  // Kernbegrippen + Check jezelf + Theorie + Voorbeelden + Opdrachten + Verdieping
+      praktisch: 1500, // Succescriteria + structured steps + mastery checklist + examples
+      onderzoek: 1500, // Hypothese + Operationalisatie + structured findings + conclusion + discussion
+      toets: 1500,     // Verward-met + denkstappen + Antwoorden block + oefenopgaven
+      custom: 1000,    // Quality instruction block + check questions + examples
     };
-    overhead += templateOverhead[formData.template] || 300;
+    overhead += templateOverhead[formData.template] || 1000;
 
     // Image placeholders if enabled (~30 tokens per placeholder, estimate 3-6 images)
     if (formData.metAfbeeldingen) {
