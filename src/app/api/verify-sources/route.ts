@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { assertUrlIsSafe, safeFetch } from '@/lib/urlSafety';
 import { RateLimiter, getClientIp } from '@/lib/rateLimiter';
-import { VERIFY_URL_TIMEOUT_MS, VERIFY_MAX_DURATION_SECONDS } from '@/lib/apiLimits';
+import { VERIFY_URL_TIMEOUT_MS } from '@/lib/apiLimits';
 
 /**
  * SSRF-Hardened Source Verification Endpoint
@@ -23,7 +23,7 @@ import { VERIFY_URL_TIMEOUT_MS, VERIFY_MAX_DURATION_SECONDS } from '@/lib/apiLim
  */
 
 export const runtime = 'nodejs';
-export const maxDuration = VERIFY_MAX_DURATION_SECONDS;
+export const maxDuration = 30;
 
 // Rate limiter: 10 requests per IP per minute
 const rateLimiter = new RateLimiter(10, 60000);

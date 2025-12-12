@@ -13,6 +13,7 @@ import { decodeDataUri, getExtensionFromMimeType } from '@/lib/base64';
  * - No edge runtime limitations for binary data processing
  */
 export const runtime = 'nodejs';
+export const maxDuration = 60; // File upload operations (HTML + images)
 
 export async function POST(request: NextRequest) {
   try {

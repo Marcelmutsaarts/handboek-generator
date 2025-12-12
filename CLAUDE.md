@@ -243,8 +243,9 @@ Gebruikers moeten hun eigen OpenRouter API key invoeren via de instellingen knop
   - OpenRouter captions: 15s (generate-caption)
   - Pexels API: 10s (images)
   - URL verificatie: 5s per URL (verify-sources)
-  - Next.js maxDuration: 120s (most routes), 30s (verify-sources)
+  - Next.js maxDuration: 120s (most routes), 30s (verify-sources), 60s (upload-public-html)
   - **Safety logging**: Timeout aborts worden gelogd met route naam en timeout waarde
+  - **IMPORTANT**: `maxDuration` exports MUST use literal numbers (Next.js 16+ requirement), not imported constants
 - **Caching**: Publieke HTML gecached voor 60s, images voor 1 jaar
 - **Runtime-safe Base64 handling**: `/api/upload-public-html` gebruikt Node.js Buffer voor binary data
   - Geen atob/Blob (browser APIs die verschillen per runtime)

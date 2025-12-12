@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { OPENROUTER_SOURCES_TIMEOUT_MS, DEFAULT_MAX_DURATION_SECONDS, createTimeoutController, logTimeoutAbort } from '@/lib/apiLimits';
+import { OPENROUTER_SOURCES_TIMEOUT_MS, createTimeoutController, logTimeoutAbort } from '@/lib/apiLimits';
 
 export const runtime = 'nodejs';
-export const maxDuration = DEFAULT_MAX_DURATION_SECONDS;
+export const maxDuration = 120;
 
 interface RegenerateSourcesRequest {
   content: string;
