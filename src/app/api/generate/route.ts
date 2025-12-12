@@ -9,7 +9,9 @@ import { estimateMaxTokens, explainTokenBudget } from '@/lib/tokenBudget';
 // Without this, Vercel uses default 10s timeout causing truncation!
 export const maxDuration = 120;
 
-const MODEL = 'google/gemini-3-pro-preview';
+// :online suffix enables OpenRouter web search (via Exa) for real sources
+// To disable: remove ':online' suffix
+const MODEL = 'google/gemini-3-pro-preview:online';
 
 // Get API key from request header (user's key) - no fallback to env
 function getApiKey(request: NextRequest): string | null {
