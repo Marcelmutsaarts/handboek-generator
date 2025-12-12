@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { buildPrompt, buildPromptWithContext } from '@/lib/prompts';
 import { FormData, TemplateSection } from '@/types';
+import { parseSSEStream, fallbackToJSON, extractErrorMessage } from '@/lib/sse';
 
 const MODEL = 'google/gemini-3-pro-preview';
 
@@ -117,63 +118,110 @@ export async function POST(request: NextRequest) {
     }
     clearTimeout(timeoutId);
 
+    // Log response status for observability (no secrets)
+    console.log('OpenRouter response:', {
+      status: response.status,
+      statusText: response.statusText,
+      model: MODEL
+    });
+
     if (!response.ok) {
-      const error = await response.text();
-      console.error('OpenRouter error:', error);
-      throw new Error('API request failed');
+      const errorMsg = await extractErrorMessage(response);
+      return new Response(JSON.stringify({ error: errorMsg }), {
+        status: response.status,
+        headers: { 'Content-Type': 'application/json' },
+      });
     }
 
     const reader = response.body?.getReader();
-    if (!reader) throw new Error('No response body');
+    if (!reader) {
+      // Fallback: Try to get content from JSON body
+      const fallbackContent = await fallbackToJSON(response);
+      if (fallbackContent) {
+        console.log('Fallback: Got content from JSON body');
+        return new Response(JSON.stringify({ content: fallbackContent }), {
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+      throw new Error('No response body');
+    }
 
     const encoder = new TextEncoder();
-    const decoder = new TextDecoder();
 
+    // Use robust SSE parsing with proper event boundary handling
     const readableStream = new ReadableStream({
       async start(controller) {
-        // First, send the prompt as metadata
-        controller.enqueue(
-          encoder.encode(`data: ${JSON.stringify({ type: 'prompt', content: prompt })}\n\n`)
-        );
+        try {
+          // First, send the prompt as metadata (unchanged for frontend compatibility)
+          controller.enqueue(
+            encoder.encode(`data: ${JSON.stringify({ type: 'prompt', content: prompt })}\n\n`)
+          );
 
-        // Process the stream
-        let buffer = '';
+          let streamFailed = false;
+          let collectedContent = '';
 
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split('\n');
-          buffer = lines.pop() || '';
-
-          for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              const data = line.slice(6);
-              if (data === '[DONE]') continue;
-
-              try {
-                const parsed = JSON.parse(data);
-                const content = parsed.choices?.[0]?.delta?.content;
-                if (content) {
-                  controller.enqueue(
-                    encoder.encode(
-                      `data: ${JSON.stringify({ type: 'content', content })}\n\n`
-                    )
-                  );
-                }
-              } catch {
-                // Ignore parsing errors
+          // Parse SSE stream robustly using eventsource-parser
+          const result = await parseSSEStream(
+            reader,
+            (message) => {
+              // Forward messages to client in same format (frontend compatibility)
+              if (message.type === 'content' && message.content) {
+                collectedContent += message.content;
+                controller.enqueue(
+                  encoder.encode(
+                    `data: ${JSON.stringify({ type: 'content', content: message.content })}\n\n`
+                  )
+                );
+              } else if (message.type === 'error' && message.error) {
+                streamFailed = true;
+                controller.enqueue(
+                  encoder.encode(
+                    `data: ${JSON.stringify({ type: 'error', error: message.error })}\n\n`
+                  )
+                );
               }
+            },
+            (error) => {
+              console.error('SSE parse error:', error.message);
+              streamFailed = true;
+            }
+          );
+
+          // Fallback: If streaming failed but we got no content, try JSON
+          if (streamFailed && !collectedContent) {
+            console.log('Stream failed, attempting fallback to JSON...');
+            const fallbackContent = await fallbackToJSON(response);
+            if (fallbackContent) {
+              console.log('Fallback successful, got content from JSON');
+              controller.enqueue(
+                encoder.encode(
+                  `data: ${JSON.stringify({ type: 'content', content: fallbackContent })}\n\n`
+                )
+              );
             }
           }
-        }
 
-        // Signal completion
-        controller.enqueue(
-          encoder.encode(`data: ${JSON.stringify({ type: 'done' })}\n\n`)
-        );
-        controller.close();
+          // Signal completion (unchanged for frontend compatibility)
+          controller.enqueue(
+            encoder.encode(`data: ${JSON.stringify({ type: 'done' })}\n\n`)
+          );
+          controller.close();
+
+        } catch (error) {
+          console.error('Stream processing error:', error);
+          // Try to send error to client
+          try {
+            controller.enqueue(
+              encoder.encode(
+                `data: ${JSON.stringify({ type: 'error', error: 'Stream processing failed' })}\n\n`
+              )
+            );
+            controller.close();
+          } catch {
+            // If we can't send error, just close
+            controller.close();
+          }
+        }
       },
     });
 

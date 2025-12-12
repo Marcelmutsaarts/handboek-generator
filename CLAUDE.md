@@ -228,6 +228,11 @@ Gebruikers moeten hun eigen OpenRouter API key invoeren via de instellingen knop
 - **Parallelle image uploads**: Uploads gaan in batches van 3 tegelijk (i.p.v. sequentieel)
 - **Image compressie**: Afbeeldingen worden gecomprimeerd voor upload (max 1920px, 80% quality)
 - **Retry-logica**: Alle uploads hebben 3 pogingen met exponential backoff
+- **Robust SSE parsing**: `/api/generate` gebruikt `eventsource-parser` voor betrouwbare streaming
+  - Handelt JSON gesplitst over chunks correct
+  - Automatic fallback naar JSON als streaming faalt
+  - Graceful degradation bij malformed events
+  - Zero breaking changes voor frontend
 - **API timeouts**: Alle externe API calls hebben timeouts:
   - Tekst generatie: 120s
   - Image generatie: 60s
