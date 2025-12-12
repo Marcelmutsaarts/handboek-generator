@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { assertUrlIsSafe, safeFetch } from '@/lib/urlSafety';
 import { RateLimiter, getClientIp } from '@/lib/rateLimiter';
 import { VERIFY_URL_TIMEOUT_MS } from '@/lib/apiLimits';
+import { urlVerificationCache, normalizeUrl } from '@/lib/ttlCache';
+
+const URL_VERIFICATION_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
 
 /**
  * SSRF-Hardened Source Verification Endpoint
@@ -84,15 +87,18 @@ function isTrustedDomain(url: string): boolean {
 }
 
 /**
- * Verify a single source with SSRF protection
+ * Verify a single source with SSRF protection and caching
+ *
+ * IMPORTANT: SSRF checks are performed BEFORE using cache to ensure safety
  */
 async function verifySource(source: Source): Promise<VerificationResult> {
   const { url, title } = source;
 
-  // Validate URL safety (SSRF protection)
+  // STEP 1: Validate URL safety (SSRF protection) - ALWAYS check first
   try {
     await assertUrlIsSafe(url, { maxLength: 2048 });
   } catch (error) {
+    // Security failure: don't cache, return error immediately
     return {
       url,
       title,
@@ -104,7 +110,24 @@ async function verifySource(source: Source): Promise<VerificationResult> {
     };
   }
 
-  // Check if domain is trusted
+  // STEP 2: Check cache (only after URL passes safety checks)
+  const cacheKey = normalizeUrl(url);
+  const cached = urlVerificationCache.get(cacheKey);
+
+  if (cached) {
+    // Return cached result (already verified safe)
+    return {
+      url,
+      title,
+      ok: cached.ok,
+      status: cached.status || 0,
+      finalUrl: cached.finalUrl || url,
+      error: cached.error,
+      isTrustedDomain: isTrustedDomain(url),
+    };
+  }
+
+  // STEP 3: Verify URL (not in cache)
   const trusted = isTrustedDomain(url);
 
   // Safely fetch URL
@@ -112,6 +135,19 @@ async function verifySource(source: Source): Promise<VerificationResult> {
     timeout: VERIFY_URL_TIMEOUT_MS,
     maxRedirects: 2,
   });
+
+  // STEP 4: Cache successful verifications (don't cache failures)
+  if (result.ok) {
+    urlVerificationCache.set(
+      cacheKey,
+      {
+        ok: result.ok,
+        status: result.status,
+        finalUrl: result.finalUrl,
+      },
+      URL_VERIFICATION_CACHE_TTL_MS
+    );
+  }
 
   return {
     url,

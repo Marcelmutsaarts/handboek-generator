@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ChapterImage } from '@/types';
 import { PEXELS_TIMEOUT_MS, createTimeoutController, logTimeoutAbort } from '@/lib/apiLimits';
+import { imageCache, normalizeQuery } from '@/lib/ttlCache';
 
 const PEXELS_API_KEY = process.env.PEXELS_API_KEY;
+const IMAGE_CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours
 
 interface PexelsPhoto {
   id: number;
@@ -44,27 +46,44 @@ export async function POST(request: NextRequest) {
           .slice(0, 3)
           .join(' ');
 
-        const query = encodeURIComponent(cleanedTerms);
+        // Check cache first (normalized query as key)
+        const cacheKey = `pexels:${normalizeQuery(cleanedTerms)}:landscape`;
+        const cached = imageCache.get(cacheKey) as PexelsResponse | null;
 
-        // Add timeout to prevent hanging requests
-        const controller = createTimeoutController(PEXELS_TIMEOUT_MS);
+        let data: PexelsResponse;
 
-        const response = await fetch(
-          `https://api.pexels.com/v1/search?query=${query}&per_page=3&orientation=landscape`,
-          {
-            headers: {
-              Authorization: PEXELS_API_KEY,
-            },
-            signal: controller.signal,
+        if (cached) {
+          // Use cached response
+          data = cached;
+        } else {
+          // Fetch from Pexels API
+          const query = encodeURIComponent(cleanedTerms);
+
+          // Add timeout to prevent hanging requests
+          const controller = createTimeoutController(PEXELS_TIMEOUT_MS);
+
+          const response = await fetch(
+            `https://api.pexels.com/v1/search?query=${query}&per_page=3&orientation=landscape`,
+            {
+              headers: {
+                Authorization: PEXELS_API_KEY,
+              },
+              signal: controller.signal,
+            }
+          );
+
+          if (!response.ok) {
+            console.error(`Pexels API error for "${terms}":`, response.status);
+            continue; // Don't cache failures
           }
-        );
 
-        if (!response.ok) {
-          console.error(`Pexels API error for "${terms}":`, response.status);
-          continue;
+          data = await response.json();
+
+          // Cache successful response (only if we got photos)
+          if (data.photos && data.photos.length > 0) {
+            imageCache.set(cacheKey, data, IMAGE_CACHE_TTL_MS);
+          }
         }
-
-        const data: PexelsResponse = await response.json();
 
         if (data.photos && data.photos.length > 0) {
           // Pick a random photo from the results for variety
@@ -83,6 +102,7 @@ export async function POST(request: NextRequest) {
         } else {
           console.error(`Error fetching image for "${terms}":`, err);
         }
+        // Don't cache errors - continue to next search term
       }
     }
 
