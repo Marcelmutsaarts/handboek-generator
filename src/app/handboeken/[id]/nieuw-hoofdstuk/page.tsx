@@ -73,7 +73,58 @@ export default function NieuwHoofdstukPage() {
   const [showSourceModal, setShowSourceModal] = useState(false);
   const [sourceReport, setSourceReport] = useState<SourceVerificationReport | null>(null);
   const [isVerifyingSources, setIsVerifyingSources] = useState(false);
-  const [isRegeneratingSources, setIsRegeneratingSources] = useState(false);
+
+  // localStorage key for draft content
+  const DRAFT_KEY = `draft-hoofdstuk-${handboekId}`;
+
+  // Restore draft content from localStorage on mount
+  useEffect(() => {
+    if (!handboekId) return;
+
+    try {
+      const saved = localStorage.getItem(DRAFT_KEY);
+      if (saved) {
+        const draft = JSON.parse(saved);
+        if (draft.content && draft.onderwerp) {
+          setContent(draft.content);
+          setOnderwerp(draft.onderwerp);
+          setPrompt(draft.prompt || '');
+          setImages(draft.images || []);
+          setPageState('result');
+        }
+      }
+    } catch {
+      // Ignore parse errors
+    }
+  }, [handboekId, DRAFT_KEY]);
+
+  // Save draft content to localStorage when content changes
+  useEffect(() => {
+    if (!handboekId || !content || savedHoofdstukId) return;
+
+    try {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify({
+        content,
+        onderwerp,
+        prompt,
+        images,
+        savedAt: Date.now(),
+      }));
+    } catch {
+      // Ignore storage errors
+    }
+  }, [handboekId, content, onderwerp, prompt, images, savedHoofdstukId, DRAFT_KEY]);
+
+  // Clear draft after successful save
+  useEffect(() => {
+    if (savedHoofdstukId && handboekId) {
+      try {
+        localStorage.removeItem(DRAFT_KEY);
+      } catch {
+        // Ignore storage errors
+      }
+    }
+  }, [savedHoofdstukId, handboekId, DRAFT_KEY]);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -638,49 +689,6 @@ export default function NieuwHoofdstukPage() {
     }
   };
 
-  const handleRegenerateSources = async () => {
-    if (!content || !handboek || !metBronnen) return;
-
-    setIsRegeneratingSources(true);
-    setShowSourceModal(false);
-    setError(null);
-
-    const onderwerpVoorBronnen = onderwerp.trim() || handboek.titel;
-
-    try {
-      const response = await fetch('/api/regenerate-sources', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...getApiKeyHeader(),
-        },
-        body: JSON.stringify({
-          content,
-          onderwerp: onderwerpVoorBronnen,
-          niveau: handboek.niveau,
-          leerjaar: handboek.leerjaar,
-          context: handboek.context || '',
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Kon bronnen niet regenereren');
-      }
-
-      const data = await response.json();
-      const regeneratedContent = data.content as string;
-      if (regeneratedContent) {
-        setContent(regeneratedContent);
-        await handleVerifySources(regeneratedContent);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Bronnen regenereren mislukt');
-    } finally {
-      setIsRegeneratingSources(false);
-    }
-  };
-
   const handleRemoveBadSources = () => {
     if (!sourceReport || !content) return;
 
@@ -1145,7 +1153,7 @@ export default function NieuwHoofdstukPage() {
                         {metBronnen && (
                           <button
                             onClick={() => handleVerifySources()}
-                            disabled={isVerifyingSources || isRegeneratingSources}
+                            disabled={isVerifyingSources}
                             className="px-3 py-1.5 bg-white border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors text-xs flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
                             title="Controleer of de bronnen echt bestaan en bereikbaar zijn"
                           >
@@ -1184,6 +1192,23 @@ export default function NieuwHoofdstukPage() {
                               Opslaan
                             </>
                           )}
+                        </button>
+
+                        {/* Discard draft button */}
+                        <button
+                          onClick={() => {
+                            if (confirm('Weet je zeker dat je dit concept wilt verwijderen?')) {
+                              try { localStorage.removeItem(DRAFT_KEY); } catch {}
+                              setContent('');
+                              setPrompt('');
+                              setImages([]);
+                              setPageState('form');
+                            }
+                          }}
+                          className="px-3 py-1.5 bg-white border border-gray-300 text-gray-500 rounded-md hover:bg-gray-50 transition-colors text-xs"
+                          title="Verwijder concept en begin opnieuw"
+                        >
+                          Verwijder
                         </button>
                       </div>
                     </div>
@@ -1235,10 +1260,8 @@ export default function NieuwHoofdstukPage() {
         isOpen={showSourceModal}
         report={sourceReport}
         isLoading={isVerifyingSources}
-        isRegenerating={isRegeneratingSources}
         onClose={() => setShowSourceModal(false)}
         onAccept={() => setShowSourceModal(false)}
-        onRetry={handleRegenerateSources}
         onRemoveBadSources={handleRemoveBadSources}
       />
     </div>

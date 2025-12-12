@@ -28,9 +28,7 @@ interface SourceVerificationModalProps {
   isLoading: boolean;
   onClose: () => void;
   onAccept: () => void;
-  onRetry: () => void;
   onRemoveBadSources?: () => void;
-  isRegenerating?: boolean;
 }
 
 function StatusBadge({ status }: { status: VerificationResult['status'] }) {
@@ -88,9 +86,7 @@ export default function SourceVerificationModal({
   isLoading,
   onClose,
   onAccept,
-  onRetry,
   onRemoveBadSources,
-  isRegenerating = false,
 }: SourceVerificationModalProps) {
   if (!isOpen) return null;
 
@@ -209,53 +205,29 @@ export default function SourceVerificationModal({
 
               {/* Actions */}
               <div className="border-t border-gray-200 pt-6">
-                <p className="text-sm text-gray-600 mb-4">Wat wil je doen?</p>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  {/* Remove bad sources button (only if there are problems) */}
+                  {hasProblems && onRemoveBadSources && (
+                    <button
+                      onClick={onRemoveBadSources}
+                      className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-red-50 border-2 border-red-200 text-red-700 rounded-lg hover:bg-red-100 transition-colors"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                      <span className="font-medium">Verwijder slechte bronnen</span>
+                      <span className="text-xs text-red-600 ml-1">({report.stats.unreachable + report.stats.invalid + report.stats.suspicious})</span>
+                    </button>
+                  )}
 
-                {/* Remove bad sources button (only if there are problems) */}
-                {hasProblems && onRemoveBadSources && (
-                  <button
-                    onClick={onRemoveBadSources}
-                    className="w-full mb-3 flex items-center justify-center gap-2 px-4 py-3 bg-red-50 border-2 border-red-200 text-red-700 rounded-lg hover:bg-red-100 transition-colors"
-                  >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                    <span className="font-medium">Verwijder slechte bronnen</span>
-                    <span className="text-xs text-red-600 ml-2">({report.stats.unreachable + report.stats.invalid} bronnen)</span>
-                  </button>
-                )}
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <button
                     onClick={onAccept}
-                    className="flex flex-col items-center gap-2 px-4 py-3 bg-green-50 border-2 border-green-200 text-green-700 rounded-lg hover:bg-green-100 transition-colors"
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-green-50 border-2 border-green-200 text-green-700 rounded-lg hover:bg-green-100 transition-colors"
                   >
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
-                    <span className="font-medium">Accepteren</span>
-                    <span className="text-xs text-green-600">Bronnen zijn goed genoeg</span>
-                  </button>
-
-                  <button
-                    onClick={onRetry}
-                    disabled={isLoading || isRegenerating}
-                    className="flex flex-col items-center gap-2 px-4 py-3 bg-blue-50 border-2 border-blue-200 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {isRegenerating ? (
-                      <div className="animate-spin h-6 w-6 border-4 border-blue-600 border-t-transparent rounded-full"></div>
-                    ) : (
-                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                        />
-                      </svg>
-                    )}
-                    <span className="font-medium">Betere bronnen</span>
-                    <span className="text-xs text-blue-600 text-center">AI herschrijft tekst + bronnen</span>
+                    <span className="font-medium">Sluiten</span>
                   </button>
                 </div>
               </div>

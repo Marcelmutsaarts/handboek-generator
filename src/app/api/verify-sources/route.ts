@@ -50,10 +50,8 @@ interface VerifyRequest {
 interface VerificationResult {
   url: string;
   title: string;
-  ok: boolean;
-  status: number;
-  finalUrl: string;
-  error?: string;
+  status: 'verified' | 'unreachable' | 'invalid' | 'suspicious';
+  message: string;
   isTrustedDomain: boolean;
 }
 
@@ -93,6 +91,7 @@ function isTrustedDomain(url: string): boolean {
  */
 async function verifySource(source: Source): Promise<VerificationResult> {
   const { url, title } = source;
+  const trusted = isTrustedDomain(url);
 
   // STEP 1: Validate URL safety (SSRF protection) - ALWAYS check first
   try {
@@ -102,10 +101,8 @@ async function verifySource(source: Source): Promise<VerificationResult> {
     return {
       url,
       title,
-      ok: false,
-      status: 0,
-      finalUrl: url,
-      error: error instanceof Error ? error.message : 'URL validation failed',
+      status: 'invalid',
+      message: error instanceof Error ? error.message : 'URL is ongeldig',
       isTrustedDomain: false,
     };
   }
@@ -119,17 +116,13 @@ async function verifySource(source: Source): Promise<VerificationResult> {
     return {
       url,
       title,
-      ok: cached.ok,
-      status: cached.status || 0,
-      finalUrl: cached.finalUrl || url,
-      error: cached.error,
-      isTrustedDomain: isTrustedDomain(url),
+      status: cached.ok ? 'verified' : 'unreachable',
+      message: cached.ok ? 'Bron is bereikbaar' : 'Bron kon niet worden bereikt',
+      isTrustedDomain: trusted,
     };
   }
 
   // STEP 3: Verify URL (not in cache)
-  const trusted = isTrustedDomain(url);
-
   // Safely fetch URL
   const result = await safeFetch(url, {
     timeout: VERIFY_URL_TIMEOUT_MS,
@@ -149,13 +142,34 @@ async function verifySource(source: Source): Promise<VerificationResult> {
     );
   }
 
+  // Determine status based on result
+  let status: VerificationResult['status'] = 'verified';
+  let message = 'Bron is bereikbaar';
+
+  if (!result.ok) {
+    if (result.status === 404) {
+      status = 'unreachable';
+      message = 'Pagina niet gevonden (404)';
+    } else if (result.status >= 400 && result.status < 500) {
+      status = 'unreachable';
+      message = `Pagina niet toegankelijk (${result.status})`;
+    } else if (result.status >= 500) {
+      status = 'unreachable';
+      message = 'Server fout - probeer later opnieuw';
+    } else if (result.error) {
+      status = 'unreachable';
+      message = 'Kon geen verbinding maken';
+    } else {
+      status = 'unreachable';
+      message = 'Bron kon niet worden geverifieerd';
+    }
+  }
+
   return {
     url,
     title,
-    ok: result.ok,
-    status: result.status,
-    finalUrl: result.finalUrl,
-    error: result.error,
+    status,
+    message,
     isTrustedDomain: trusted,
   };
 }
@@ -231,8 +245,10 @@ export async function POST(request: NextRequest) {
     // Calculate statistics
     const stats = {
       total: results.length,
-      verified: results.filter((r) => r.ok).length,
-      failed: results.filter((r) => !r.ok).length,
+      verified: results.filter((r) => r.status === 'verified').length,
+      unreachable: results.filter((r) => r.status === 'unreachable').length,
+      invalid: results.filter((r) => r.status === 'invalid').length,
+      suspicious: results.filter((r) => r.status === 'suspicious').length,
       trusted: results.filter((r) => r.isTrustedDomain).length,
     };
 
