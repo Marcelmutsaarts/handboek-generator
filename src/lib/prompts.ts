@@ -582,6 +582,14 @@ Streef naar ongeveer ${woordenaantal} woorden.
 - Gebruik "je" en "jij" om de lezer aan te spreken
 - Titels en kopjes: alleen eerste woord met hoofdletter (Nederlandse schrijfwijze), dus NIET "De Franse Revolutie" maar "De Franse revolutie"
 
+## OPMAAK (MARKDOWN, GEEN HTML)
+- Gebruik ALLEEN Markdown opmaak, NOOIT HTML tags
+- Voor vet: gebruik **tekst** (NIET <strong> of <b>)
+- Voor cursief: gebruik *tekst* (NIET <em> of <i>)
+- Voor lijsten: gebruik - of 1. (NIET <ul>/<ol>/<li>)
+- Voor kopjes: gebruik # ## ### (NIET <h1>/<h2>/<h3>)
+- BELANGRIJK: Genereer NOOIT HTML tags zoals <strong>, <em>, <p>, <br>, etc.
+
 ## CULTURELE CONTEXT (STANDAARD NEDERLANDS)
 Gebruik ALTIJD Nederlandse context, tenzij het onderwerp of de leerdoelen expliciet anders aangeven:
 

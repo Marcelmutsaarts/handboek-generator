@@ -30,10 +30,10 @@ const CHARS_PER_TOKEN = 4;
 /**
  * Safety margins and limits
  */
-const SAFETY_MARGIN_PERCENTAGE = 0.30; // 30% extra for formatting, structure
-const MIN_MAX_TOKENS = 600; // Minimum reasonable output
-const DEFAULT_MAX_TOKENS = 1500; // Sensible default (was 8192)
-const ABSOLUTE_MAX_TOKENS = 4096; // Hard cap to avoid excessive cost/latency
+const SAFETY_MARGIN_PERCENTAGE = 0.35; // 35% extra for formatting, structure (increased for richer templates)
+const MIN_MAX_TOKENS = 800; // Minimum reasonable output
+const DEFAULT_MAX_TOKENS = 2500; // Sensible default (increased for structured templates)
+const ABSOLUTE_MAX_TOKENS = 8192; // Hard cap - increased to support verbose didactic templates
 
 /**
  * Estimate max_tokens for text generation based on request parameters
@@ -76,8 +76,19 @@ export function estimateMaxTokens(
     // 4. Add overhead for structure and features
     let overhead = 0;
 
-    // Section headers and formatting (~50 tokens per section)
-    overhead += sectionCount * 50;
+    // Section headers and formatting (~80 tokens per section - increased for richer templates)
+    overhead += sectionCount * 80;
+
+    // Additional overhead for structured template elements (Kernbegrippen, Check jezelf, etc.)
+    // These templates now require more structured output
+    const templateOverhead: Record<string, number> = {
+      klassiek: 400,  // Kernbegrippen (5) + Check jezelf (5 Q&A)
+      praktisch: 500, // Succescriteria + structured steps + mastery checklist
+      onderzoek: 450, // Hypothese + Operationalisatie + structured findings + conclusion
+      toets: 500,     // Verward-met + denkstappen + Antwoorden block
+      custom: 300,    // Quality instruction block + check questions
+    };
+    overhead += templateOverhead[formData.template] || 300;
 
     // Image placeholders if enabled (~30 tokens per placeholder, estimate 3-6 images)
     if (formData.metAfbeeldingen) {
