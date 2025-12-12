@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { buildPrompt, buildPromptWithContext } from '@/lib/prompts';
 import { FormData, TemplateSection } from '@/types';
-import { parseSSEStream, fallbackToJSON, extractErrorMessage } from '@/lib/sse';
+import { parseSSEStream, fallbackToJSON, extractErrorMessage, sanitizeHtmlToMarkdown } from '@/lib/sse';
 import { OPENROUTER_TEXT_TIMEOUT_MS, createTimeoutController, logTimeoutAbort } from '@/lib/apiLimits';
 import { estimateMaxTokens, explainTokenBudget } from '@/lib/tokenBudget';
 
@@ -168,18 +168,39 @@ export async function POST(request: NextRequest) {
           let streamFailed = false;
           let collectedContent = '';
 
+          // Buffer for handling HTML tags split across chunks
+          let htmlTagBuffer = '';
+
           // Parse SSE stream robustly using eventsource-parser
           const result = await parseSSEStream(
             reader,
             (message) => {
               // Forward messages to client in same format (frontend compatibility)
               if (message.type === 'content' && message.content) {
-                collectedContent += message.content;
-                controller.enqueue(
-                  encoder.encode(
-                    `data: ${JSON.stringify({ type: 'content', content: message.content })}\n\n`
-                  )
-                );
+                // Combine with buffer and sanitize
+                let content = htmlTagBuffer + message.content;
+                htmlTagBuffer = '';
+
+                // Check for incomplete HTML tags at the end
+                const lastOpenBracket = content.lastIndexOf('<');
+                const lastCloseBracket = content.lastIndexOf('>');
+                if (lastOpenBracket > lastCloseBracket) {
+                  // Incomplete tag - buffer it for next chunk
+                  htmlTagBuffer = content.slice(lastOpenBracket);
+                  content = content.slice(0, lastOpenBracket);
+                }
+
+                // Sanitize HTML to Markdown
+                const sanitizedContent = sanitizeHtmlToMarkdown(content);
+
+                collectedContent += sanitizedContent;
+                if (sanitizedContent) {
+                  controller.enqueue(
+                    encoder.encode(
+                      `data: ${JSON.stringify({ type: 'content', content: sanitizedContent })}\n\n`
+                    )
+                  );
+                }
               } else if (message.type === 'error' && message.error) {
                 streamFailed = true;
                 controller.enqueue(
@@ -194,6 +215,19 @@ export async function POST(request: NextRequest) {
               streamFailed = true;
             }
           );
+
+          // Flush any remaining buffered content
+          if (htmlTagBuffer) {
+            const sanitizedBuffer = sanitizeHtmlToMarkdown(htmlTagBuffer);
+            collectedContent += sanitizedBuffer;
+            if (sanitizedBuffer) {
+              controller.enqueue(
+                encoder.encode(
+                  `data: ${JSON.stringify({ type: 'content', content: sanitizedBuffer })}\n\n`
+                )
+              );
+            }
+          }
 
           // Fallback: If streaming failed but we got no content, try JSON
           if (streamFailed && !collectedContent) {

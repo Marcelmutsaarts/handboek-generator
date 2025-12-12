@@ -23,6 +23,42 @@ export interface SSEMessage {
 }
 
 /**
+ * Sanitize HTML tags to Markdown equivalents
+ *
+ * Some models output HTML tags instead of Markdown despite instructions.
+ * This converts common HTML formatting to Markdown for consistent output.
+ */
+export function sanitizeHtmlToMarkdown(text: string): string {
+  if (!text) return text;
+
+  return text
+    // Bold: <strong>, <b> → **text**
+    .replace(/<strong>(.*?)<\/strong>/gi, '**$1**')
+    .replace(/<b>(.*?)<\/b>/gi, '**$1**')
+    // Italic: <em>, <i> → *text*
+    .replace(/<em>(.*?)<\/em>/gi, '*$1*')
+    .replace(/<i>(.*?)<\/i>/gi, '*$1*')
+    // Line breaks
+    .replace(/<br\s*\/?>/gi, '\n')
+    // Paragraphs
+    .replace(/<p>(.*?)<\/p>/gi, '$1\n\n')
+    .replace(/<\/p>/gi, '\n\n')
+    .replace(/<p>/gi, '')
+    // Headers (basic support)
+    .replace(/<h1>(.*?)<\/h1>/gi, '# $1\n')
+    .replace(/<h2>(.*?)<\/h2>/gi, '## $1\n')
+    .replace(/<h3>(.*?)<\/h3>/gi, '### $1\n')
+    // Lists
+    .replace(/<li>(.*?)<\/li>/gi, '- $1\n')
+    .replace(/<\/?[uo]l>/gi, '\n')
+    // Clean up any remaining opening/closing tags that weren't matched
+    .replace(/<\/?strong>/gi, '**')
+    .replace(/<\/?b>/gi, '**')
+    .replace(/<\/?em>/gi, '*')
+    .replace(/<\/?i>/gi, '*');
+}
+
+/**
  * Parse an SSE stream from OpenRouter/LLM providers robustly
  *
  * @param reader ReadableStream reader from fetch response

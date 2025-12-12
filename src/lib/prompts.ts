@@ -560,6 +560,16 @@ Pas de moeilijkheidsgraad, diepgang en voorbeelden aan op dit leerjaar.
 
   const prompt = `Je bent een ervaren onderwijsauteur die educatieve hoofdstukken schrijft. Schrijf een compleet hoofdstuk voor ${niveauInfo.doelgroep}, leerjaar ${leerjaar}.
 
+## KRITISCH: OPMAAK (MARKDOWN, GEEN HTML)
+Dit is de BELANGRIJKSTE regel - volg deze STRIKT:
+- Gebruik ALLEEN Markdown opmaak, ABSOLUUT NOOIT HTML tags
+- Voor vet: gebruik **tekst** (NIET <strong>, NIET <b>)
+- Voor cursief: gebruik *tekst* (NIET <em>, NIET <i>)
+- Voor lijsten: gebruik - of 1. (NIET <ul>/<ol>/<li>)
+- Voor kopjes: gebruik # ## ### (NIET <h1>/<h2>/<h3>)
+- VERBODEN: <strong>, <em>, <p>, <br>, <b>, <i>, of ENIGE andere HTML tag
+- Als je HTML genereert, wordt het hoofdstuk AFGEKEURD
+
 ## ONDERWERP
 ${onderwerp}
 ${leerjaarSection}${leerdoelenSection}${contextSection}
@@ -572,7 +582,7 @@ Lever het hoofdstuk in deze exacte structuur. Volg de secties precies zoals hier
 ${templateStructuur}
 ${afbeeldingenSection}${bronnenSection}
 ## LENGTE
-Streef naar ongeveer ${woordenaantal} woorden.
+Streef naar ongeveer ${woordenaantal} woorden. Maak het hoofdstuk VOLLEDIG af - stop niet halverwege.
 
 ## TAALGEBRUIK
 - Schrijf in het Nederlands
@@ -581,14 +591,6 @@ Streef naar ongeveer ${woordenaantal} woorden.
 - Vermijd jargon tenzij je het uitlegt
 - Gebruik "je" en "jij" om de lezer aan te spreken
 - Titels en kopjes: alleen eerste woord met hoofdletter (Nederlandse schrijfwijze), dus NIET "De Franse Revolutie" maar "De Franse revolutie"
-
-## OPMAAK (MARKDOWN, GEEN HTML)
-- Gebruik ALLEEN Markdown opmaak, NOOIT HTML tags
-- Voor vet: gebruik **tekst** (NIET <strong> of <b>)
-- Voor cursief: gebruik *tekst* (NIET <em> of <i>)
-- Voor lijsten: gebruik - of 1. (NIET <ul>/<ol>/<li>)
-- Voor kopjes: gebruik # ## ### (NIET <h1>/<h2>/<h3>)
-- BELANGRIJK: Genereer NOOIT HTML tags zoals <strong>, <em>, <p>, <br>, etc.
 
 ## CULTURELE CONTEXT (STANDAARD NEDERLANDS)
 Gebruik ALTIJD Nederlandse context, tenzij het onderwerp of de leerdoelen expliciet anders aangeven:
