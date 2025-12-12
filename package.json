@@ -15,7 +15,7 @@
     "eventsource-parser": "^3.0.6",
     "file-saver": "^2.0.5",
     "katex": "^0.16.27",
-    "next": "^16.0.7",
+    "next": "16.0.10",
     "react": "19.2.0",
     "react-dom": "19.2.0",
     "rehype-sanitize": "^6.0.0",
