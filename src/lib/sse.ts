@@ -46,12 +46,12 @@ export function sanitizeHtmlToMarkdown(text: string): string {
   const decoded = decodeBasicEntities(text);
 
   return decoded
-    // Bold: <strong>, <b> → **text**
-    .replace(/<strong>(.*?)<\/strong>/gi, '**$1**')
-    .replace(/<b>(.*?)<\/b>/gi, '**$1**')
-    // Italic: <em>, <i> → *text*
-    .replace(/<em>(.*?)<\/em>/gi, '*$1*')
-    .replace(/<i>(.*?)<\/i>/gi, '*$1*')
+    // Bold: <strong>, <b> → **text** (s flag voor multiline support)
+    .replace(/<strong>(.*?)<\/strong>/gis, '**$1**')
+    .replace(/<b>(.*?)<\/b>/gis, '**$1**')
+    // Italic: <em>, <i> → *text* (s flag voor multiline support)
+    .replace(/<em>(.*?)<\/em>/gis, '*$1*')
+    .replace(/<i>(.*?)<\/i>/gis, '*$1*')
     // Line breaks
     .replace(/<br\s*\/?>/gi, '\n')
     // Paragraphs

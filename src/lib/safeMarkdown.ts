@@ -155,15 +155,15 @@ function convertHtmlToMarkdown(text: string): string {
   const decoded = decodeBasicEntities(text);
 
   return decoded
-    // Bold: <strong>, <b> → **text**
-    .replace(/<strong>(.*?)<\/strong>/gi, '**$1**')
-    .replace(/<b>(.*?)<\/b>/gi, '**$1**')
+    // Bold: <strong>, <b> → **text** (s flag voor multiline support)
+    .replace(/<strong>(.*?)<\/strong>/gis, '**$1**')
+    .replace(/<b>(.*?)<\/b>/gis, '**$1**')
     // Handle unclosed/partial tags
     .replace(/<\/?strong>/gi, '**')
     .replace(/<\/?b>/gi, '**')
-    // Italic: <em>, <i> → *text*
-    .replace(/<em>(.*?)<\/em>/gi, '*$1*')
-    .replace(/<i>(.*?)<\/i>/gi, '*$1*')
+    // Italic: <em>, <i> → *text* (s flag voor multiline support)
+    .replace(/<em>(.*?)<\/em>/gis, '*$1*')
+    .replace(/<i>(.*?)<\/i>/gis, '*$1*')
     .replace(/<\/?em>/gi, '*')
     .replace(/<\/?i>/gi, '*')
     // Line breaks
@@ -200,9 +200,9 @@ export function renderSafeMarkdownSync(markdown: string): string {
     .replace(/^### (.*$)/gm, (_, text) => `<h3>${escapeHtml(text)}</h3>`)
     .replace(/^## (.*$)/gm, (_, text) => `<h2>${escapeHtml(text)}</h2>`)
     .replace(/^# (.*$)/gm, (_, text) => `<h1>${escapeHtml(text)}</h1>`)
-    // Bold and italic (already safe in escaped context)
-    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-    .replace(/(?<!\\)\*(?!\*)([^*]+)\*(?!\*)/g, '<em>$1</em>')
+    // Bold and italic (already safe in escaped context, s flag voor multiline)
+    .replace(/\*\*(.*?)\*\*/gs, '<strong>$1</strong>')
+    .replace(/(?<!\\)\*(?!\*)([^*\n]+)\*(?!\*)/g, '<em>$1</em>')
     // Lists (escape content)
     .replace(/^\d+\.\s+(.*$)/gm, (_, text) => `<li>${escapeHtml(text)}</li>`)
     .replace(/^[-•]\s+(.*$)/gm, (_, text) => `<li>${escapeHtml(text)}</li>`)
