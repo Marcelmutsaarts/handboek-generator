@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { OPENROUTER_SOURCES_TIMEOUT_MS, DEFAULT_MAX_DURATION_SECONDS, createTimeoutController, logTimeoutAbort } from '@/lib/apiLimits';
 
 export const runtime = 'nodejs';
-export const maxDuration = 120;
+export const maxDuration = DEFAULT_MAX_DURATION_SECONDS;
 
 interface RegenerateSourcesRequest {
   content: string;
@@ -77,8 +78,7 @@ HUIDIGE TEKST:
 ${content}
 """`;
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 110000);
+    const controller = createTimeoutController(OPENROUTER_SOURCES_TIMEOUT_MS);
 
     let response: Response;
     try {
@@ -98,8 +98,8 @@ ${content}
         signal: controller.signal,
       });
     } catch (error) {
-      clearTimeout(timeoutId);
       if (error instanceof Error && error.name === 'AbortError') {
+        logTimeoutAbort('regenerate-sources', OPENROUTER_SOURCES_TIMEOUT_MS);
         return NextResponse.json(
           { error: 'Bronnen regenereren duurde te lang. Probeer opnieuw.' },
           { status: 504 }
@@ -107,8 +107,6 @@ ${content}
       }
       throw error;
     }
-
-    clearTimeout(timeoutId);
 
     if (!response.ok) {
       const error = await response.text();

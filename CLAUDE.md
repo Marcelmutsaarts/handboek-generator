@@ -233,16 +233,18 @@ Gebruikers moeten hun eigen OpenRouter API key invoeren via de instellingen knop
   - Automatic fallback naar JSON als streaming faalt
   - Graceful degradation bij malformed events
   - Zero breaking changes voor frontend
-- **API timeouts**: Alle externe API calls hebben timeouts:
-  - Tekst generatie: 120s
-  - Image generatie: 60s
-  - Cover generatie: 60s
-  - Quality check: 60s
-  - Improve content: 120s
-  - Rewrite: 60s
-  - Structure: 30s
-  - Caption: 15s
-  - Pexels: 10s
+- **Centralized API timeouts**: Alle externe API calls gebruiken gecentraliseerde timeout configuratie via `src/lib/apiLimits.ts`:
+  - OpenRouter tekst generatie: 120s (generate)
+  - OpenRouter quality/improvement: 90s (quality-check, improve-content)
+  - OpenRouter bronverificatie: 110s (regenerate-sources)
+  - OpenRouter afbeeldingen: 60s (generate-image, generate-cover)
+  - OpenRouter rewrite: 60s (rewrite)
+  - OpenRouter structure: 30s (generate-structure)
+  - OpenRouter captions: 15s (generate-caption)
+  - Pexels API: 10s (images)
+  - URL verificatie: 5s per URL (verify-sources)
+  - Next.js maxDuration: 120s (most routes), 30s (verify-sources)
+  - **Safety logging**: Timeout aborts worden gelogd met route naam en timeout waarde
 - **Caching**: Publieke HTML gecached voor 60s, images voor 1 jaar
 
 ### Publiek delen flow

@@ -14,7 +14,7 @@
  * - Fallback ensures we get content even if streaming parser fails
  */
 
-import { createParser, ParsedEvent, ReconnectInterval } from 'eventsource-parser';
+import { createParser, EventSourceMessage, ParseError } from 'eventsource-parser';
 
 export interface SSEMessage {
   type: 'content' | 'error' | 'done';
@@ -40,12 +40,8 @@ export async function parseSSEStream(
   let hadError = false;
 
   try {
-    const parser = createParser((event: ParsedEvent | ReconnectInterval) => {
-      // Ignore reconnect events
-      if (event.type === 'reconnect-interval') return;
-
-      // Handle parsed SSE event
-      if (event.type === 'event') {
+    const parser = createParser({
+      onEvent: (event: EventSourceMessage) => {
         const data = event.data;
 
         // OpenRouter sends [DONE] to signal completion
@@ -78,6 +74,10 @@ export async function parseSSEStream(
           // (some providers send non-JSON control messages)
           console.warn('SSE parse warning:', parseError);
         }
+      },
+      onError: (error: ParseError) => {
+        // Handle parse errors
+        console.warn('SSE parser error:', error.message);
       }
     });
 

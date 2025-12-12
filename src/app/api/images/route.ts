@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ChapterImage } from '@/types';
+import { PEXELS_TIMEOUT_MS, createTimeoutController, logTimeoutAbort } from '@/lib/apiLimits';
 
 const PEXELS_API_KEY = process.env.PEXELS_API_KEY;
 
@@ -46,8 +47,7 @@ export async function POST(request: NextRequest) {
         const query = encodeURIComponent(cleanedTerms);
 
         // Add timeout to prevent hanging requests
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+        const controller = createTimeoutController(PEXELS_TIMEOUT_MS);
 
         const response = await fetch(
           `https://api.pexels.com/v1/search?query=${query}&per_page=3&orientation=landscape`,
@@ -58,8 +58,6 @@ export async function POST(request: NextRequest) {
             signal: controller.signal,
           }
         );
-
-        clearTimeout(timeoutId);
 
         if (!response.ok) {
           console.error(`Pexels API error for "${terms}":`, response.status);
@@ -80,7 +78,11 @@ export async function POST(request: NextRequest) {
           });
         }
       } catch (err) {
-        console.error(`Error fetching image for "${terms}":`, err);
+        if (err instanceof Error && err.name === 'AbortError') {
+          logTimeoutAbort('images (Pexels)', PEXELS_TIMEOUT_MS);
+        } else {
+          console.error(`Error fetching image for "${terms}":`, err);
+        }
       }
     }
 

@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { OPENROUTER_QUALITY_TIMEOUT_MS, DEFAULT_MAX_DURATION_SECONDS, createTimeoutController, logTimeoutAbort } from '@/lib/apiLimits';
 
 export const runtime = 'nodejs';
-export const maxDuration = 120;
+export const maxDuration = DEFAULT_MAX_DURATION_SECONDS;
 
 interface QualityCheckRequest {
   content: string;
@@ -84,8 +85,7 @@ JSON (geen extra tekst):
   "samenvatting": "1-2 zinnen algemene beoordeling"
 }`;
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 90000);
+    const controller = createTimeoutController(OPENROUTER_QUALITY_TIMEOUT_MS);
 
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
@@ -101,8 +101,6 @@ JSON (geen extra tekst):
       }),
       signal: controller.signal,
     });
-
-    clearTimeout(timeoutId);
 
     if (!response.ok) {
       const error = await response.text();
@@ -171,14 +169,15 @@ JSON (geen extra tekst):
 
     return NextResponse.json(report);
   } catch (error) {
-    console.error('Quality check error:', error);
-
     if (error instanceof Error && error.name === 'AbortError') {
+      logTimeoutAbort('quality-check', OPENROUTER_QUALITY_TIMEOUT_MS);
       return NextResponse.json(
         { error: 'Kwaliteitscheck timeout - probeer opnieuw' },
         { status: 408 }
       );
     }
+
+    console.error('Quality check error:', error);
 
     return NextResponse.json(
       { error: 'Failed to check quality', details: error instanceof Error ? error.message : 'Unknown error' },

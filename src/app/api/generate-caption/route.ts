@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { OPENROUTER_CAPTION_TIMEOUT_MS, createTimeoutController, logTimeoutAbort } from '@/lib/apiLimits';
 
 const CAPTION_MODEL = 'google/gemini-2.0-flash-001';
 
@@ -47,8 +48,7 @@ VOORBEELD FORMATEN:
 Geef ALLEEN de caption terug, zonder extra uitleg of aanhalingstekens.`;
 
     // Add timeout for caption generation
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
+    const controller = createTimeoutController(OPENROUTER_CAPTION_TIMEOUT_MS);
 
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
@@ -72,8 +72,6 @@ Geef ALLEEN de caption terug, zonder extra uitleg of aanhalingstekens.`;
       signal: controller.signal,
     });
 
-    clearTimeout(timeoutId);
-
     if (!response.ok) {
       const error = await response.text();
       console.error('OpenRouter caption generation error:', error);
@@ -90,12 +88,12 @@ Geef ALLEEN de caption terug, zonder extra uitleg of aanhalingstekens.`;
     return NextResponse.json({ caption });
 
   } catch (error) {
-    console.error('Caption generation error:', error);
-
     if (error instanceof Error && error.name === 'AbortError') {
+      logTimeoutAbort('generate-caption', OPENROUTER_CAPTION_TIMEOUT_MS);
       return NextResponse.json({ error: 'Caption generatie duurde te lang' }, { status: 504 });
     }
 
+    console.error('Caption generation error:', error);
     return NextResponse.json({ error: 'Caption generatie mislukt' }, { status: 500 });
   }
 }

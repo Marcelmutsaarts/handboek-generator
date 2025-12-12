@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { OPENROUTER_QUALITY_TIMEOUT_MS, DEFAULT_MAX_DURATION_SECONDS, createTimeoutController, logTimeoutAbort } from '@/lib/apiLimits';
 
 export const runtime = 'nodejs';
-export const maxDuration = 120;
+export const maxDuration = DEFAULT_MAX_DURATION_SECONDS;
 
 interface SelectedFeedback {
   criterium: string;
@@ -66,8 +67,7 @@ BELANGRIJK:
 - Gebruik exact dezelfde koppen en secties
 - Pas ALLEEN de specifieke feedback punten toe die zijn geselecteerd`;
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 90000);
+    const controller = createTimeoutController(OPENROUTER_QUALITY_TIMEOUT_MS);
 
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
@@ -83,8 +83,6 @@ BELANGRIJK:
       }),
       signal: controller.signal,
     });
-
-    clearTimeout(timeoutId);
 
     if (!response.ok) {
       const error = await response.text();
@@ -104,15 +102,15 @@ BELANGRIJK:
 
     return NextResponse.json({ improved: improvedContent.trim() });
   } catch (error) {
-    console.error('Improve content error:', error);
-
     if (error instanceof Error && error.name === 'AbortError') {
+      logTimeoutAbort('improve-content', OPENROUTER_QUALITY_TIMEOUT_MS);
       return NextResponse.json(
         { error: 'Verbetering timeout - probeer opnieuw' },
         { status: 408 }
       );
     }
 
+    console.error('Improve content error:', error);
     return NextResponse.json(
       { error: 'Failed to improve content', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }

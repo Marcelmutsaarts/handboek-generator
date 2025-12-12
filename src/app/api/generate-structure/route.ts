@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Niveau, HoofdstukPlan } from '@/types';
+import { OPENROUTER_STRUCTURE_TIMEOUT_MS, createTimeoutController, logTimeoutAbort } from '@/lib/apiLimits';
 
 const MODEL = 'google/gemini-3-pro-preview';
 
@@ -90,8 +91,7 @@ Geef je antwoord als een JSON array. Geen andere tekst, alleen de JSON:
 Zorg dat de JSON geldig is en direct te parsen.`;
 
     // Add timeout for structure generation
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
+    const controller = createTimeoutController(OPENROUTER_STRUCTURE_TIMEOUT_MS);
 
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
@@ -109,8 +109,6 @@ Zorg dat de JSON geldig is en direct te parsen.`;
       }),
       signal: controller.signal,
     });
-
-    clearTimeout(timeoutId);
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -172,15 +170,15 @@ Zorg dat de JSON geldig is en direct te parsen.`;
     return NextResponse.json({ structuur });
 
   } catch (error) {
-    console.error('Generate structure error:', error);
-
     if (error instanceof Error && error.name === 'AbortError') {
+      logTimeoutAbort('generate-structure', OPENROUTER_STRUCTURE_TIMEOUT_MS);
       return NextResponse.json(
         { error: 'Structuur generatie duurde te lang. Probeer het opnieuw.' },
         { status: 504 }
       );
     }
 
+    console.error('Generate structure error:', error);
     return NextResponse.json(
       { error: 'Er ging iets mis bij het genereren van de structuur' },
       { status: 500 }

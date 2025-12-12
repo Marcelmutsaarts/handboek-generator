@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { assertUrlIsSafe, safeFetch } from '@/lib/urlSafety';
 import { RateLimiter, getClientIp } from '@/lib/rateLimiter';
+import { VERIFY_URL_TIMEOUT_MS, VERIFY_MAX_DURATION_SECONDS } from '@/lib/apiLimits';
 
 /**
  * SSRF-Hardened Source Verification Endpoint
@@ -22,7 +23,7 @@ import { RateLimiter, getClientIp } from '@/lib/rateLimiter';
  */
 
 export const runtime = 'nodejs';
-export const maxDuration = 30;
+export const maxDuration = VERIFY_MAX_DURATION_SECONDS;
 
 // Rate limiter: 10 requests per IP per minute
 const rateLimiter = new RateLimiter(10, 60000);
@@ -32,9 +33,6 @@ const MAX_URLS_PER_REQUEST = 10;
 
 // Maximum concurrent fetches
 const MAX_CONCURRENT_FETCHES = 3;
-
-// Per-URL timeout
-const URL_TIMEOUT_MS = 5000;
 
 interface Source {
   title: string;
@@ -111,7 +109,7 @@ async function verifySource(source: Source): Promise<VerificationResult> {
 
   // Safely fetch URL
   const result = await safeFetch(url, {
-    timeout: URL_TIMEOUT_MS,
+    timeout: VERIFY_URL_TIMEOUT_MS,
     maxRedirects: 2,
   });
 

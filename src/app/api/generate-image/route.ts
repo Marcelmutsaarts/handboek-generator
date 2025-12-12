@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { OPENROUTER_IMAGE_TIMEOUT_MS, createTimeoutController, logTimeoutAbort } from '@/lib/apiLimits';
 
 // BELANGRIJK: NOOIT AANPASSEN - Altijd Gemini gebruiken!
 const IMAGE_MODEL = 'google/gemini-2.5-flash-image';
@@ -110,8 +111,7 @@ Stijlvereisten:
     const aspectRatio = isInfographic ? '1:1' : '16:9';
 
     // Add timeout to prevent hanging requests
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout for image generation
+    const controller = createTimeoutController(OPENROUTER_IMAGE_TIMEOUT_MS);
 
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
@@ -136,8 +136,6 @@ Stijlvereisten:
       }),
       signal: controller.signal,
     });
-
-    clearTimeout(timeoutId);
 
     if (!response.ok) {
       const error = await response.text();
@@ -164,13 +162,13 @@ Stijlvereisten:
     return NextResponse.json({ error: 'No image generated' }, { status: 500 });
 
   } catch (error) {
-    console.error('Image generation error:', error);
+    if (error instanceof Error && error.name === 'AbortError') {
+      logTimeoutAbort('generate-image', OPENROUTER_IMAGE_TIMEOUT_MS);
+      return NextResponse.json({ error: 'Afbeelding generatie duurde te lang. Probeer het opnieuw.' }, { status: 504 });
+    }
 
-    // Better error messages based on error type
+    console.error('Image generation error:', error);
     if (error instanceof Error) {
-      if (error.name === 'AbortError') {
-        return NextResponse.json({ error: 'Afbeelding generatie duurde te lang. Probeer het opnieuw.' }, { status: 504 });
-      }
       return NextResponse.json({ error: `Afbeelding generatie mislukt: ${error.message}` }, { status: 500 });
     }
 

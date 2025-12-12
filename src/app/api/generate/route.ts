@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { buildPrompt, buildPromptWithContext } from '@/lib/prompts';
 import { FormData, TemplateSection } from '@/types';
 import { parseSSEStream, fallbackToJSON, extractErrorMessage } from '@/lib/sse';
+import { OPENROUTER_TEXT_TIMEOUT_MS, createTimeoutController, logTimeoutAbort } from '@/lib/apiLimits';
 
 const MODEL = 'google/gemini-3-pro-preview';
 
@@ -80,8 +81,7 @@ export async function POST(request: NextRequest) {
       : buildPrompt(formData);
 
     // Create streaming response via OpenRouter with timeout
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 min timeout for text generation
+    const controller = createTimeoutController(OPENROUTER_TEXT_TIMEOUT_MS);
 
     let response: Response;
     try {
@@ -107,8 +107,8 @@ export async function POST(request: NextRequest) {
         signal: controller.signal,
       });
     } catch (error) {
-      clearTimeout(timeoutId);
       if (error instanceof Error && error.name === 'AbortError') {
+        logTimeoutAbort('generate', OPENROUTER_TEXT_TIMEOUT_MS);
         return new Response(JSON.stringify({ error: 'Generatie duurde te lang. Probeer het opnieuw.' }), {
           status: 504,
           headers: { 'Content-Type': 'application/json' },
@@ -116,7 +116,6 @@ export async function POST(request: NextRequest) {
       }
       throw error;
     }
-    clearTimeout(timeoutId);
 
     // Log response status for observability (no secrets)
     console.log('OpenRouter response:', {

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { OPENROUTER_IMAGE_TIMEOUT_MS, createTimeoutController, logTimeoutAbort } from '@/lib/apiLimits';
 
 // BELANGRIJK: NOOIT AANPASSEN - Altijd Gemini gebruiken!
 const COVER_MODEL = 'google/gemini-3-pro-image-preview';
@@ -59,8 +60,7 @@ ONTWERPVEREISTEN:
 Maak een cover die leerlingen en docenten aanspreekt en het onderwerp visueel samenvat.`;
 
     // Add timeout for cover generation
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout for image generation
+    const controller = createTimeoutController(OPENROUTER_IMAGE_TIMEOUT_MS);
 
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
@@ -85,8 +85,6 @@ Maak een cover die leerlingen en docenten aanspreekt en het onderwerp visueel sa
       }),
       signal: controller.signal,
     });
-
-    clearTimeout(timeoutId);
 
     if (!response.ok) {
       const error = await response.text();
@@ -123,12 +121,12 @@ Maak een cover die leerlingen en docenten aanspreekt en het onderwerp visueel sa
     return NextResponse.json({ error: 'Geen cover gegenereerd' }, { status: 500 });
 
   } catch (error) {
-    console.error('Cover generation error:', error);
-
     if (error instanceof Error && error.name === 'AbortError') {
+      logTimeoutAbort('generate-cover', OPENROUTER_IMAGE_TIMEOUT_MS);
       return NextResponse.json({ error: 'Cover generatie duurde te lang. Probeer het opnieuw.' }, { status: 504 });
     }
 
+    console.error('Cover generation error:', error);
     return NextResponse.json({ error: 'Cover generatie mislukt' }, { status: 500 });
   }
 }

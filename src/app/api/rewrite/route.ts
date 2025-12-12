@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server';
+import { OPENROUTER_REWRITE_TIMEOUT_MS, createTimeoutController, logTimeoutAbort } from '@/lib/apiLimits';
 
 const MODEL = 'google/gemini-3-pro-preview';
 
@@ -50,8 +51,7 @@ BELANGRIJKE REGELS:
 Geef alleen de herschreven tekst terug, zonder uitleg of commentaar.`;
 
     // Add timeout for rewrite requests
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout
+    const controller = createTimeoutController(OPENROUTER_REWRITE_TIMEOUT_MS);
 
     let response: Response;
     try {
@@ -72,8 +72,8 @@ Geef alleen de herschreven tekst terug, zonder uitleg of commentaar.`;
         signal: controller.signal,
       });
     } catch (error) {
-      clearTimeout(timeoutId);
       if (error instanceof Error && error.name === 'AbortError') {
+        logTimeoutAbort('rewrite', OPENROUTER_REWRITE_TIMEOUT_MS);
         return new Response(
           JSON.stringify({ error: 'Herschrijven duurde te lang. Probeer het opnieuw.' }),
           { status: 504, headers: { 'Content-Type': 'application/json' } }
@@ -81,7 +81,6 @@ Geef alleen de herschreven tekst terug, zonder uitleg of commentaar.`;
       }
       throw error;
     }
-    clearTimeout(timeoutId);
 
     if (!response.ok) {
       const error = await response.text();
