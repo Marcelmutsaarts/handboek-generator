@@ -5,6 +5,10 @@ import { parseSSEStream, fallbackToJSON, extractErrorMessage, sanitizeHtmlToMark
 import { OPENROUTER_TEXT_TIMEOUT_MS, createTimeoutController, logTimeoutAbort } from '@/lib/apiLimits';
 import { estimateMaxTokens, explainTokenBudget } from '@/lib/tokenBudget';
 
+// CRITICAL: Vercel serverless timeout - must be literal number (Next.js 16+ requirement)
+// Without this, Vercel uses default 10s timeout causing truncation!
+export const maxDuration = 120;
+
 const MODEL = 'google/gemini-3-pro-preview';
 
 // Get API key from request header (user's key) - no fallback to env

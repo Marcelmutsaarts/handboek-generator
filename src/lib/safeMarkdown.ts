@@ -135,14 +135,51 @@ export async function renderSafeMarkdown(markdown: string): Promise<string> {
 }
 
 /**
+ * Convert HTML tags to Markdown equivalents before processing
+ * This handles cases where AI outputs HTML instead of Markdown
+ */
+function convertHtmlToMarkdown(text: string): string {
+  if (!text) return text;
+
+  return text
+    // Bold: <strong>, <b> → **text**
+    .replace(/<strong>(.*?)<\/strong>/gi, '**$1**')
+    .replace(/<b>(.*?)<\/b>/gi, '**$1**')
+    // Handle unclosed/partial tags
+    .replace(/<\/?strong>/gi, '**')
+    .replace(/<\/?b>/gi, '**')
+    // Italic: <em>, <i> → *text*
+    .replace(/<em>(.*?)<\/em>/gi, '*$1*')
+    .replace(/<i>(.*?)<\/i>/gi, '*$1*')
+    .replace(/<\/?em>/gi, '*')
+    .replace(/<\/?i>/gi, '*')
+    // Line breaks
+    .replace(/<br\s*\/?>/gi, '\n')
+    // Paragraphs
+    .replace(/<p>(.*?)<\/p>/gi, '$1\n\n')
+    .replace(/<\/p>/gi, '\n\n')
+    .replace(/<p>/gi, '')
+    // Headers
+    .replace(/<h1>(.*?)<\/h1>/gi, '# $1\n')
+    .replace(/<h2>(.*?)<\/h2>/gi, '## $1\n')
+    .replace(/<h3>(.*?)<\/h3>/gi, '### $1\n')
+    // Lists
+    .replace(/<li>(.*?)<\/li>/gi, '- $1\n')
+    .replace(/<\/?[uo]l>/gi, '\n');
+}
+
+/**
  * Synchronous version of renderSafeMarkdown (less feature-complete but faster)
  * Use this for simple cases where you don't need GFM features
  */
 export function renderSafeMarkdownSync(markdown: string): string {
   if (!markdown) return '';
 
-  // Render LaTeX first
-  let processed = renderLatex(markdown);
+  // FIRST: Convert any HTML tags to Markdown (handles AI outputting HTML)
+  let processed = convertHtmlToMarkdown(markdown);
+
+  // Render LaTeX
+  processed = renderLatex(processed);
 
   // Basic markdown parsing with XSS protection
   processed = processed

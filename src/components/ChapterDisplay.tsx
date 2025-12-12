@@ -1,12 +1,18 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import type { Paragraph, TextRun as DocxTextRun } from 'docx';
 import { ChapterImage } from '@/types';
 import { renderSafeMarkdownSync } from '@/lib/safeMarkdown';
 
 // Simple cache to avoid reparsing identical markdown fragments
+// Note: Cache is cleared when streaming to avoid stale content
 const markdownCache = new Map<string, string>();
+
+// Clear cache - exported for use in effects
+function clearMarkdownCache() {
+  markdownCache.clear();
+}
 
 interface ChapterDisplayProps {
   content: string;
@@ -22,6 +28,16 @@ export default function ChapterDisplay({
   isStreaming,
 }: ChapterDisplayProps) {
   const [showPrompt, setShowPrompt] = useState(false);
+  const wasStreaming = useRef(false);
+
+  // Clear cache when streaming starts to ensure fresh parsing
+  useEffect(() => {
+    if (isStreaming && !wasStreaming.current) {
+      // Streaming just started - clear old cache
+      clearMarkdownCache();
+    }
+    wasStreaming.current = isStreaming;
+  }, [isStreaming]);
 
   const renderContentWithImages = () => {
     if (!content) return null;
