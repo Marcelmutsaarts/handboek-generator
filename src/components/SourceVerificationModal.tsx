@@ -1,80 +1,56 @@
 'use client';
 
-interface VerificationResult {
-  url: string;
+import { useState } from 'react';
+
+export interface Source {
   title: string;
-  status: 'verified' | 'unreachable' | 'invalid' | 'suspicious';
-  message: string;
-  isTrustedDomain: boolean;
-}
-
-interface VerificationStats {
-  total: number;
-  verified: number;
-  unreachable: number;
-  invalid: number;
-  suspicious: number;
-  trusted: number;
-}
-
-export interface SourceVerificationReport {
-  results: VerificationResult[];
-  stats: VerificationStats;
+  url: string;
 }
 
 interface SourceVerificationModalProps {
   isOpen: boolean;
-  report: SourceVerificationReport | null;
-  isLoading: boolean;
+  sources: Source[];
   onClose: () => void;
-  onAccept: () => void;
-  onRemoveBadSources?: () => void;
+  onRemoveSources: (sourcesToRemove: Source[]) => void;
 }
 
-function StatusBadge({ status }: { status: VerificationResult['status'] }) {
-  const config: Record<string, { bg: string; icon: string; label: string }> = {
-    verified: { bg: 'bg-green-100 text-green-700', icon: '✓', label: 'Geverifieerd' },
-    unreachable: { bg: 'bg-red-100 text-red-700', icon: '✗', label: 'Niet bereikbaar' },
-    invalid: { bg: 'bg-red-100 text-red-700', icon: '✗', label: 'Ongeldig' },
-    suspicious: { bg: 'bg-yellow-100 text-yellow-700', icon: '⚠', label: 'Verdacht' },
-    // Fallback for any unexpected status
-    unknown: { bg: 'bg-gray-100 text-gray-700', icon: '?', label: 'Onbekend' },
-  };
-
-  const { bg, icon, label } = config[status] || config.unknown;
-
+function SourceItem({
+  source,
+  isSelected,
+  onToggle,
+}: {
+  source: Source;
+  isSelected: boolean;
+  onToggle: () => void;
+}) {
   return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${bg}`}>
-      <span>{icon}</span>
-      <span>{label}</span>
-    </span>
-  );
-}
-
-function SourceItem({ result }: { result: VerificationResult }) {
-  return (
-    <div className="bg-white rounded-lg p-4 border border-gray-200">
-      <div className="flex items-start justify-between gap-3 mb-2">
+    <div className={`bg-white rounded-lg p-4 border ${isSelected ? 'border-red-300 bg-red-50' : 'border-gray-200'}`}>
+      <div className="flex items-start gap-3">
+        <input
+          type="checkbox"
+          checked={isSelected}
+          onChange={onToggle}
+          className="mt-1 h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500"
+        />
         <div className="flex-1 min-w-0">
-          <h4 className="font-medium text-gray-900 truncate">{result.title}</h4>
+          <h4 className="font-medium text-gray-900">{source.title}</h4>
           <a
-            href={result.url}
+            href={source.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-xs text-blue-600 hover:underline break-all"
+            className="text-sm text-blue-600 hover:underline break-all"
           >
-            {result.url}
+            {source.url}
           </a>
         </div>
-        <StatusBadge status={result.status} />
-      </div>
-      <div className="flex items-start gap-2">
-        <p className="text-sm text-gray-600">{result.message}</p>
-        {result.isTrustedDomain && (
-          <span className="flex-shrink-0 text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded">
-            Betrouwbaar domein
-          </span>
-        )}
+        <a
+          href={source.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex-shrink-0 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-md hover:bg-blue-100 transition-colors text-sm"
+        >
+          Bekijk
+        </a>
       </div>
     </div>
   );
@@ -82,26 +58,49 @@ function SourceItem({ result }: { result: VerificationResult }) {
 
 export default function SourceVerificationModal({
   isOpen,
-  report,
-  isLoading,
+  sources,
   onClose,
-  onAccept,
-  onRemoveBadSources,
+  onRemoveSources,
 }: SourceVerificationModalProps) {
+  const [selectedSources, setSelectedSources] = useState<Set<string>>(new Set());
+
   if (!isOpen) return null;
 
-  const hasProblems = report && (report.stats.unreachable > 0 || report.stats.invalid > 0 || report.stats.suspicious > 0);
+  const toggleSource = (url: string) => {
+    setSelectedSources((prev) => {
+      const next = new Set(prev);
+      if (next.has(url)) {
+        next.delete(url);
+      } else {
+        next.add(url);
+      }
+      return next;
+    });
+  };
+
+  const handleRemoveSelected = () => {
+    const toRemove = sources.filter((s) => selectedSources.has(s.url));
+    onRemoveSources(toRemove);
+    setSelectedSources(new Set());
+  };
+
+  const selectAll = () => {
+    setSelectedSources(new Set(sources.map((s) => s.url)));
+  };
+
+  const selectNone = () => {
+    setSelectedSources(new Set());
+  };
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
-          <h2 className="text-xl font-semibold text-gray-900">📚 Bronverificatie</h2>
+          <h2 className="text-xl font-semibold text-gray-900">Bronnen controleren</h2>
           <button
             onClick={onClose}
-            disabled={isLoading}
-            className="text-gray-400 hover:text-gray-600 disabled:opacity-50"
+            className="text-gray-400 hover:text-gray-600"
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -111,131 +110,74 @@ export default function SourceVerificationModal({
 
         {/* Content */}
         <div className="p-6">
-          {isLoading ? (
-            <div className="flex flex-col items-center justify-center py-12">
-              <div className="animate-spin h-12 w-12 border-4 border-primary border-t-transparent rounded-full mb-4"></div>
-              <p className="text-gray-600">Bronnen worden geverifieerd...</p>
-              <p className="text-sm text-gray-500 mt-2">Dit duurt ongeveer 10-20 seconden</p>
+          {sources.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-gray-500">Geen bronnen gevonden in het hoofdstuk</p>
             </div>
-          ) : report ? (
+          ) : (
             <>
-              {/* Statistics */}
-              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-6 mb-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900">Verificatieresultaten</h3>
-                    <p className="text-sm text-gray-600 mt-1">
-                      {report.stats.verified} van {report.stats.total} bronnen geverifieerd
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-4xl font-bold text-gray-900">
-                      {Math.round((report.stats.verified / report.stats.total) * 100)}%
-                    </div>
-                    <div className="text-sm text-gray-600">succesvol</div>
-                  </div>
-                </div>
+              {/* Info */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                <p className="text-sm text-blue-800">
+                  Klik op "Bekijk" om een bron te controleren. Selecteer bronnen die je wilt verwijderen en klik op "Verwijder geselecteerde".
+                </p>
+              </div>
 
-                {/* Statistics breakdown */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-white rounded-lg p-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600">Geverifieerd</span>
-                      <span className="font-semibold text-green-700">{report.stats.verified}</span>
-                    </div>
-                  </div>
-                  {report.stats.trusted > 0 && (
-                    <div className="bg-white rounded-lg p-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-gray-600">Betrouwbaar domein</span>
-                        <span className="font-semibold text-blue-700">{report.stats.trusted}</span>
-                      </div>
-                    </div>
-                  )}
-                  {report.stats.unreachable > 0 && (
-                    <div className="bg-white rounded-lg p-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-gray-600">Niet bereikbaar</span>
-                        <span className="font-semibold text-red-700">{report.stats.unreachable}</span>
-                      </div>
-                    </div>
-                  )}
-                  {report.stats.invalid > 0 && (
-                    <div className="bg-white rounded-lg p-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-gray-600">Ongeldig</span>
-                        <span className="font-semibold text-red-700">{report.stats.invalid}</span>
-                      </div>
-                    </div>
-                  )}
-                  {report.stats.suspicious > 0 && (
-                    <div className="bg-white rounded-lg p-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-gray-600">Verdacht</span>
-                        <span className="font-semibold text-yellow-700">{report.stats.suspicious}</span>
-                      </div>
-                    </div>
-                  )}
+              {/* Quick select */}
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-sm text-gray-600">
+                  {sources.length} bron{sources.length !== 1 ? 'nen' : ''} gevonden
+                </span>
+                <div className="flex gap-2">
+                  <button
+                    onClick={selectAll}
+                    className="text-xs text-gray-600 hover:text-gray-900 underline"
+                  >
+                    Alles selecteren
+                  </button>
+                  <span className="text-gray-300">|</span>
+                  <button
+                    onClick={selectNone}
+                    className="text-xs text-gray-600 hover:text-gray-900 underline"
+                  >
+                    Niets selecteren
+                  </button>
                 </div>
-
-                {/* Warning if there are problems */}
-                {hasProblems && (
-                  <div className="mt-4 bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-                    <div className="flex items-start gap-2">
-                      <span className="text-yellow-600 text-xl flex-shrink-0">⚠️</span>
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-yellow-800">Let op</p>
-                        <p className="text-xs text-yellow-700 mt-1">
-                          Sommige bronnen konden niet worden geverifieerd. Dit kunnen fictieve bronnen zijn of tijdelijk onbereikbare websites.
-                          Controleer de bronnen handmatig voordat je het hoofdstuk opslaat.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
               </div>
 
               {/* Source list */}
               <div className="space-y-3 mb-6">
-                <h4 className="font-medium text-gray-900 mb-3">Alle bronnen ({report.results.length})</h4>
-                {report.results.map((result, index) => (
-                  <SourceItem key={index} result={result} />
+                {sources.map((source) => (
+                  <SourceItem
+                    key={source.url}
+                    source={source}
+                    isSelected={selectedSources.has(source.url)}
+                    onToggle={() => toggleSource(source.url)}
+                  />
                 ))}
               </div>
 
               {/* Actions */}
-              <div className="border-t border-gray-200 pt-6">
-                <div className="flex flex-col sm:flex-row gap-3">
-                  {/* Remove bad sources button (only if there are problems) */}
-                  {hasProblems && onRemoveBadSources && (
-                    <button
-                      onClick={onRemoveBadSources}
-                      className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-red-50 border-2 border-red-200 text-red-700 rounded-lg hover:bg-red-100 transition-colors"
-                    >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                      <span className="font-medium">Verwijder slechte bronnen</span>
-                      <span className="text-xs text-red-600 ml-1">({report.stats.unreachable + report.stats.invalid + report.stats.suspicious})</span>
-                    </button>
-                  )}
-
+              <div className="border-t border-gray-200 pt-4 flex gap-3">
+                {selectedSources.size > 0 && (
                   <button
-                    onClick={onAccept}
-                    className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-green-50 border-2 border-green-200 text-green-700 rounded-lg hover:bg-green-100 transition-colors"
+                    onClick={handleRemoveSelected}
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-red-50 border-2 border-red-200 text-red-700 rounded-lg hover:bg-red-100 transition-colors"
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                     </svg>
-                    <span className="font-medium">Sluiten</span>
+                    <span className="font-medium">Verwijder geselecteerde ({selectedSources.size})</span>
                   </button>
-                </div>
+                )}
+                <button
+                  onClick={onClose}
+                  className={`${selectedSources.size > 0 ? '' : 'flex-1'} flex items-center justify-center gap-2 px-4 py-3 bg-gray-50 border-2 border-gray-200 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors`}
+                >
+                  <span className="font-medium">Sluiten</span>
+                </button>
               </div>
             </>
-          ) : (
-            <div className="text-center py-12">
-              <p className="text-gray-500">Geen verificatierapport beschikbaar</p>
-            </div>
           )}
         </div>
       </div>

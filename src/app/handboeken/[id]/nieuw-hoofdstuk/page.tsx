@@ -7,7 +7,7 @@ import Header from '@/components/Header';
 import ChapterDisplay from '@/components/ChapterDisplay';
 import QualityFeedbackModal from '@/components/QualityFeedbackModal';
 import { QualityReport } from '@/components/QualityCheckModal';
-import SourceVerificationModal, { SourceVerificationReport } from '@/components/SourceVerificationModal';
+import SourceVerificationModal, { Source } from '@/components/SourceVerificationModal';
 import { useAuth } from '@/hooks/useAuth';
 import { createClient } from '@/lib/supabase/client';
 import { Handboek, Hoofdstuk, Lengte, AfbeeldingType, ChapterImage, getTemplate, WOORDEN_PER_LENGTE, HoofdstukPlan } from '@/types';
@@ -71,8 +71,7 @@ export default function NieuwHoofdstukPage() {
 
   // Source verification state
   const [showSourceModal, setShowSourceModal] = useState(false);
-  const [sourceReport, setSourceReport] = useState<SourceVerificationReport | null>(null);
-  const [isVerifyingSources, setIsVerifyingSources] = useState(false);
+  const [extractedSources, setExtractedSources] = useState<Source[]>([]);
 
   // localStorage key for draft content
   const DRAFT_KEY = `draft-hoofdstuk-${handboekId}`;
@@ -651,62 +650,29 @@ export default function NieuwHoofdstukPage() {
     return sources;
   };
 
-  const handleVerifySources = async (overrideContent?: string) => {
-    const targetContent = overrideContent ?? content;
-    if (!targetContent || !metBronnen) return;
+  const handleOpenSourceModal = () => {
+    if (!content || !metBronnen) return;
 
-    const sources = extractSources(targetContent);
+    const sources = extractSources(content);
 
     if (sources.length === 0) {
       setError('Geen bronnen gevonden in het hoofdstuk');
       return;
     }
 
-      setShowSourceModal(true);
-      setIsVerifyingSources(true);
-      setSourceReport(null);
-
-      try {
-        const response = await fetch('/api/verify-sources', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ sources }),
-        });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Bronverificatie mislukt');
-      }
-
-      const report: SourceVerificationReport = await response.json();
-      setSourceReport(report);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Bronverificatie mislukt');
-      setShowSourceModal(false);
-    } finally {
-      setIsVerifyingSources(false);
-    }
+    setExtractedSources(sources);
+    setShowSourceModal(true);
   };
 
-  const handleRemoveBadSources = () => {
-    if (!sourceReport || !content) return;
-
-    // Get bad sources (unreachable, invalid, suspicious)
-    const badSources = sourceReport.results.filter(
-      (r) => r.status === 'unreachable' || r.status === 'invalid' || r.status === 'suspicious'
-    );
-
-    if (badSources.length === 0) {
+  const handleRemoveSources = (sourcesToRemove: Source[]) => {
+    if (sourcesToRemove.length === 0 || !content) {
       setShowSourceModal(false);
       return;
     }
 
-    // Find the Bronnen section (case-insensitive, flexible whitespace)
+    // Find the Bronnen section
     const bronnenMatch = content.match(/##\s*Bronnen\s*\n([\s\S]*?)(?=\n##|$)/i);
     if (!bronnenMatch) {
-      console.warn('Geen bronnenlijst gevonden in content');
       setError('Geen bronnenlijst gevonden om te bewerken');
       return;
     }
@@ -715,34 +681,24 @@ export default function NieuwHoofdstukPage() {
     let updatedBronnenSection = bronnenSection;
     let updatedContent = content;
 
-    // Remove each bad source
-    badSources.forEach((badSource) => {
-      // Escape special regex characters in URL
-      const escapedUrl = badSource.url.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const escapedTitle = badSource.title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    // Remove each selected source
+    sourcesToRemove.forEach((source) => {
+      const escapedUrl = source.url.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-      // 1. Remove from bronnen section (allow optional whitespace/bullet style)
+      // Remove from bronnen section
       const bronnenPattern = new RegExp(`^\\s*[-*]?\\s*\\[[^\\]]*\\]\\(${escapedUrl}\\)[^\\n]*\\n?`, 'gmi');
-      const beforeLength = updatedBronnenSection.length;
       updatedBronnenSection = updatedBronnenSection.replace(bronnenPattern, '');
-      const afterLength = updatedBronnenSection.length;
 
-      if (beforeLength === afterLength) {
-        console.warn('Bron niet gevonden in lijst:', badSource.url);
-      } else {
-        console.log('Bron verwijderd uit lijst:', badSource.url);
-      }
-
-      // 2. Remove inline citations from the text
+      // Remove inline citations
       const citationMarkers = new Set<string>();
-      if (badSource.title) {
-        citationMarkers.add(badSource.title);
-        const firstWord = badSource.title.split(/[\s,;-]/).filter(Boolean)[0];
+      if (source.title) {
+        citationMarkers.add(source.title);
+        const firstWord = source.title.split(/[\s,;-]/).filter(Boolean)[0];
         if (firstWord) citationMarkers.add(firstWord);
       }
 
       try {
-        const hostname = new URL(badSource.url).hostname.replace(/^www\\./, '');
+        const hostname = new URL(source.url).hostname.replace(/^www\\./, '');
         const hostParts = hostname.split('.');
         const rootDomain = hostParts.slice(-2).join('.');
         const hostKeyword = hostParts.length > 1 ? hostParts[hostParts.length - 2] : hostname;
@@ -756,35 +712,28 @@ export default function NieuwHoofdstukPage() {
       citationMarkers.forEach((marker) => {
         const escapedMarker = marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         const inlineCitationPattern = new RegExp(`\\s*\\(${escapedMarker}[^)]*\\)`, 'gi');
-        const beforeInline = updatedContent.length;
         updatedContent = updatedContent.replace(inlineCitationPattern, '');
-        const afterInline = updatedContent.length;
-
-        if (beforeInline !== afterInline) {
-          console.log('Inline citaties verwijderd voor marker:', marker);
-        }
       });
     });
 
     const cleanedBronnenSection = updatedBronnenSection.trim();
     const replacementSection = cleanedBronnenSection ? `## Bronnen\n${cleanedBronnenSection}\n` : '## Bronnen\n';
 
-    // Replace the bronnen section in the updated content
     updatedContent = updatedContent.replace(
       /##\s*Bronnen\s*\n[\s\S]*?(?=\n##|$)/i,
       replacementSection
     );
 
-    // Only update if something actually changed
     if (updatedContent !== content) {
       setContent(updatedContent);
-      console.log('Content bijgewerkt: bronnen en citaties verwijderd');
-    } else {
-      console.warn('Geen wijzigingen aangebracht');
     }
 
+    // Update extracted sources list
+    setExtractedSources((prev) =>
+      prev.filter((s) => !sourcesToRemove.some((r) => r.url === s.url))
+    );
+
     setShowSourceModal(false);
-    setSourceReport(null);
   };
 
   if (authLoading || pageState === 'loading') {
@@ -1150,27 +1099,17 @@ export default function NieuwHoofdstukPage() {
                           )}
                         </button>
 
-                        {/* Source verification button - compact (only if metBronnen is enabled) */}
+                        {/* Source check button (only if metBronnen is enabled) */}
                         {metBronnen && (
                           <button
-                            onClick={() => handleVerifySources()}
-                            disabled={isVerifyingSources}
-                            className="px-3 py-1.5 bg-white border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors text-xs flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
-                            title="Controleer of de bronnen echt bestaan en bereikbaar zijn"
+                            onClick={handleOpenSourceModal}
+                            className="px-3 py-1.5 bg-white border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors text-xs flex items-center gap-1.5"
+                            title="Bekijk en controleer de bronnen"
                           >
-                            {isVerifyingSources ? (
-                              <>
-                                <div className="animate-spin h-3.5 w-3.5 border-2 border-gray-700 border-t-transparent rounded-full"></div>
-                                Controleren...
-                              </>
-                            ) : (
-                              <>
-                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                                </svg>
-                                Bronnen
-                              </>
-                            )}
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                            </svg>
+                            Bronnen
                           </button>
                         )}
 
@@ -1259,11 +1198,9 @@ export default function NieuwHoofdstukPage() {
       {/* Source Verification Modal */}
       <SourceVerificationModal
         isOpen={showSourceModal}
-        report={sourceReport}
-        isLoading={isVerifyingSources}
+        sources={extractedSources}
         onClose={() => setShowSourceModal(false)}
-        onAccept={() => setShowSourceModal(false)}
-        onRemoveBadSources={handleRemoveBadSources}
+        onRemoveSources={handleRemoveSources}
       />
     </div>
   );
