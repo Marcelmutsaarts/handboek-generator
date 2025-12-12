@@ -34,14 +34,16 @@ interface SourceVerificationModalProps {
 }
 
 function StatusBadge({ status }: { status: VerificationResult['status'] }) {
-  const config = {
+  const config: Record<string, { bg: string; icon: string; label: string }> = {
     verified: { bg: 'bg-green-100 text-green-700', icon: '✓', label: 'Geverifieerd' },
     unreachable: { bg: 'bg-red-100 text-red-700', icon: '✗', label: 'Niet bereikbaar' },
     invalid: { bg: 'bg-red-100 text-red-700', icon: '✗', label: 'Ongeldig' },
     suspicious: { bg: 'bg-yellow-100 text-yellow-700', icon: '⚠', label: 'Verdacht' },
+    // Fallback for any unexpected status
+    unknown: { bg: 'bg-gray-100 text-gray-700', icon: '?', label: 'Onbekend' },
   };
 
-  const { bg, icon, label } = config[status];
+  const { bg, icon, label } = config[status] || config.unknown;
 
   return (
     <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${bg}`}>

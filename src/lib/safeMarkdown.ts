@@ -195,22 +195,23 @@ export function renderSafeMarkdownSync(markdown: string): string {
   processed = renderLatex(processed);
 
   // Basic markdown parsing with XSS protection
+  // Note: Order matters! Lists must be processed BEFORE bold/italic to preserve ** markers
   processed = processed
-    // Headings
+    // Headings (escape content for XSS protection)
     .replace(/^### (.*$)/gm, (_, text) => `<h3>${escapeHtml(text)}</h3>`)
     .replace(/^## (.*$)/gm, (_, text) => `<h2>${escapeHtml(text)}</h2>`)
     .replace(/^# (.*$)/gm, (_, text) => `<h1>${escapeHtml(text)}</h1>`)
-    // Bold and italic (already safe in escaped context, s flag voor multiline)
-    .replace(/\*\*(.*?)\*\*/gs, '<strong>$1</strong>')
-    .replace(/(?<!\\)\*(?!\*)([^*\n]+)\*(?!\*)/g, '<em>$1</em>')
-    // Lists (escape content)
-    .replace(/^\d+\.\s+(.*$)/gm, (_, text) => `<li>${escapeHtml(text)}</li>`)
-    .replace(/^[-•]\s+(.*$)/gm, (_, text) => `<li>${escapeHtml(text)}</li>`)
-    .replace(/(<li>.*<\/li>\n?)+/g, (match) => {
+    // Lists FIRST (no escapeHtml - content is already sanitized and we need to preserve ** markers)
+    .replace(/^\d+\.\s+(.*$)/gm, '<li>$1</li>')
+    .replace(/^[-•]\s+(.*$)/gm, '<li>$1</li>')
+    .replace(/(<li>.*<\/li>\n?)+/gs, (match) => {
       const isNumbered = /^\d+\./.test(markdown);
       const tag = isNumbered ? 'ol' : 'ul';
       return `<${tag}>${match}</${tag}>`;
     })
+    // Bold and italic AFTER lists (so they work inside list items)
+    .replace(/\*\*(.*?)\*\*/gs, '<strong>$1</strong>')
+    .replace(/(?<!\\)\*(?!\*)([^*\n]+)\*(?!\*)/g, '<em>$1</em>')
     // Paragraphs
     .replace(/\n\n/g, '</p><p>')
     .replace(/\n/g, '<br>')
