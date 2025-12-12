@@ -1,21 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { assertValidSlug } from '@/lib/slug';
+import { decodeDataUri, getExtensionFromMimeType } from '@/lib/base64';
 
-// Helper to convert base64 to blob
-function base64ToBlob(base64: string): { blob: Blob; mimeType: string } | null {
-  try {
-    const match = base64.match(/^data:([^;]+);base64,(.+)$/);
-    if (!match) return null;
-
-    const mimeType = match[1];
-    const data = match[2];
-    const bytes = Uint8Array.from(atob(data), c => c.charCodeAt(0));
-    return { blob: new Blob([bytes], { type: mimeType }), mimeType };
-  } catch {
-    return null;
-  }
-}
+/**
+ * Runtime: Node.js
+ *
+ * Why Node.js runtime:
+ * - Consistent Buffer support for binary handling (no atob/Blob polyfills)
+ * - Reliable base64 decoding without runtime compatibility issues
+ * - Stable across Vercel/Next.js deployment environments
+ * - No edge runtime limitations for binary data processing
+ */
+export const runtime = 'nodejs';
 
 export async function POST(request: NextRequest) {
   try {
@@ -28,6 +25,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Validate HTML content is present and is a string
+    if (!html || typeof html !== 'string' || html.trim().length === 0) {
+      return NextResponse.json(
+        { error: 'HTML content is vereist' },
+        { status: 400 }
+      );
+    }
+
     // Validate slug for security (prevent path traversal, injection)
     try {
       assertValidSlug(slug);
@@ -36,6 +41,14 @@ export async function POST(request: NextRequest) {
         {
           error: error instanceof Error ? error.message : 'Ongeldige slug',
         },
+        { status: 400 }
+      );
+    }
+
+    // Validate images array if provided
+    if (images !== undefined && !Array.isArray(images)) {
+      return NextResponse.json(
+        { error: 'Images moet een array zijn' },
         { status: 400 }
       );
     }
@@ -59,20 +72,24 @@ export async function POST(request: NextRequest) {
         const imgData = images[i];
         if (!imgData.url || !imgData.url.startsWith('data:')) continue;
 
-        const result = base64ToBlob(imgData.url);
-        if (!result) continue;
+        // Decode base64 data URI using runtime-safe Buffer approach
+        const decoded = decodeDataUri(imgData.url);
+        if (!decoded) {
+          console.warn(`Invalid base64 image at index ${i}, skipping`);
+          continue;
+        }
 
-        const ext = result.mimeType.split('/')[1] || 'png';
+        const ext = getExtensionFromMimeType(decoded.mimeType);
         const fileName = `${slug}/img-${i}.${ext}`;
 
         // Delete existing file if any
         await supabase.storage.from('publiek-handboeken').remove([fileName]);
 
-        // Upload new file
+        // Upload new file using Buffer (Node.js runtime)
         const { error: uploadError } = await supabase.storage
           .from('publiek-handboeken')
-          .upload(fileName, result.blob, {
-            contentType: result.mimeType,
+          .upload(fileName, decoded.buffer, {
+            contentType: decoded.mimeType,
             cacheControl: '31536000', // 1 year cache
             upsert: true,
           });
@@ -89,13 +106,15 @@ export async function POST(request: NextRequest) {
     // Upload HTML file
     if (html) {
       const fileName = `${slug}.html`;
-      const htmlBlob = new Blob([html], { type: 'text/html' });
+
+      // Convert HTML string to Buffer (Node.js runtime)
+      const htmlBuffer = Buffer.from(html, 'utf-8');
 
       await supabase.storage.from('publiek-handboeken').remove([fileName]);
 
       const { error: uploadError } = await supabase.storage
         .from('publiek-handboeken')
-        .upload(fileName, htmlBlob, {
+        .upload(fileName, htmlBuffer, {
           contentType: 'text/html',
           cacheControl: '3600',
           upsert: true,

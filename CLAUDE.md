@@ -246,6 +246,12 @@ Gebruikers moeten hun eigen OpenRouter API key invoeren via de instellingen knop
   - Next.js maxDuration: 120s (most routes), 30s (verify-sources)
   - **Safety logging**: Timeout aborts worden gelogd met route naam en timeout waarde
 - **Caching**: Publieke HTML gecached voor 60s, images voor 1 jaar
+- **Runtime-safe Base64 handling**: `/api/upload-public-html` gebruikt Node.js Buffer voor binary data
+  - Geen atob/Blob (browser APIs die verschillen per runtime)
+  - Consistent Buffer.from() voor base64 decoding
+  - Validatie van base64 data URIs met try/catch
+  - Expliciet Node.js runtime voor stabiele binary handling
+  - Gerelateerde bestanden: `src/lib/base64.ts`, `src/app/api/upload-public-html/route.ts`
 
 ### Publiek delen flow
 1. Afbeeldingen worden parallel gecomprimeerd en geüpload naar Supabase Storage
