@@ -33,7 +33,7 @@ const CHARS_PER_TOKEN = 4;
 const SAFETY_MARGIN_PERCENTAGE = 0.35; // 35% extra for formatting, structure (increased for richer templates)
 const MIN_MAX_TOKENS = 800; // Minimum reasonable output
 const DEFAULT_MAX_TOKENS = 2500; // Sensible default (increased for structured templates)
-const ABSOLUTE_MAX_TOKENS = 8192; // Hard cap - increased to support verbose didactic templates
+const ABSOLUTE_MAX_TOKENS = 16384; // Hard cap - supports up to ~5000 words with full template overhead
 
 /**
  * Estimate max_tokens for text generation based on request parameters
