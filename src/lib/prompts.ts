@@ -345,9 +345,13 @@ Handige tips voor de toets: waar letten docenten op? Veelgemaakte fouten om te v
 ---
 
 ## 🎬 Bekijk dit eerst
-[YOUTUBE: Zoek een echte, bestaande YouTube video over "${onderwerp}". Geef de volledige URL.]
 
-**Video:** [Titel van de video](https://www.youtube.com/watch?v=XXXXX)
+BELANGRIJK: Zoek een ECHTE YouTube video over "${onderwerp}".
+- ALLEEN youtube.com links (GEEN SchoolTV, Vimeo, of andere platforms)
+- De link MOET klikbaar zijn in markdown formaat: [Titel](https://www.youtube.com/watch?v=...)
+
+**Video:** [Titel van de video](https://www.youtube.com/watch?v=ECHTE_VIDEO_ID)
+
 *Duur: X minuten | Waarom deze video: [1 zin waarom deze video helpt]*
 
 ---
@@ -393,9 +397,12 @@ Handige tips voor de toets: waar letten docenten op? Veelgemaakte fouten om te v
 ---
 
 ## 🔗 Meer ontdekken
-[YOUTUBE/PODCAST: Zoek nog een video of podcast voor wie meer wil weten]
 
-- [Extra video of podcast](URL) - [1 zin beschrijving]${bronnenSectie}`,
+Zoek nog een YouTube video OF podcast voor verdieping.
+- ALLEEN klikbare markdown links: [Titel](URL)
+- Bij voorkeur YouTube, mag ook Spotify podcast
+
+- [Extra video of podcast](https://www.youtube.com/watch?v=... of https://open.spotify.com/...) - [1 zin beschrijving]${bronnenSectie}`,
 
     custom: `# [Pakkende titel voor het hoofdstuk]
 
