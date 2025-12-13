@@ -78,6 +78,16 @@ body {
   font-weight: 600;
 }
 
+.prose a {
+  color: var(--primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.prose a:hover {
+  color: var(--primary-hover);
+}
+
 .prose blockquote {
   border-left: 4px solid var(--primary);
   padding-left: 1rem;

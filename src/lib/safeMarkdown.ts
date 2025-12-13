@@ -201,6 +201,9 @@ export function renderSafeMarkdownSync(markdown: string): string {
     .replace(/^### (.*$)/gm, (_, text) => `<h3>${escapeHtml(text)}</h3>`)
     .replace(/^## (.*$)/gm, (_, text) => `<h2>${escapeHtml(text)}</h2>`)
     .replace(/^# (.*$)/gm, (_, text) => `<h1>${escapeHtml(text)}</h1>`)
+    // Links: [text](url) → <a href="url">text</a> (only allow http/https for security)
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, (_, text, url) =>
+      `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(text)}</a>`)
     // Lists FIRST (no escapeHtml - content is already sanitized and we need to preserve ** markers)
     .replace(/^\d+\.\s+(.*$)/gm, '<li>$1</li>')
     .replace(/^[-•]\s+(.*$)/gm, '<li>$1</li>')
