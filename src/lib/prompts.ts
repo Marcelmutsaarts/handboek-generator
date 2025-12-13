@@ -143,7 +143,7 @@ const LEERJAAR_AANPASSINGEN: Record<string, Record<number, string>> = {
 };
 
 // Template structuur instructies genereren
-function buildTemplateStructure(template: TemplateType, customSecties?: TemplateSection[], metBronnen?: boolean): string {
+function buildTemplateStructure(template: TemplateType, customSecties?: TemplateSection[], metBronnen?: boolean, onderwerp?: string): string {
   // Bij custom template, gebruik de custom secties met kwaliteitsinstructies
   if (template === 'custom' && customSecties && customSecties.length > 0) {
     const customInstructionBlock = `**KWALITEITSEISEN PER SECTIE:**
@@ -336,6 +336,66 @@ Korte antwoorden op de oefenopgaven:
 
 ## Tips
 Handige tips voor de toets: waar letten docenten op? Veelgemaakte fouten om te vermijden.${bronnenSectie}`,
+
+    visueel: `# [Korte, pakkende titel - max 6 woorden]
+
+## Prikkel
+[Eén prikkelende vraag OF één verrassend feit over het onderwerp. Max 2 zinnen. Moet nieuwsgierigheid opwekken.]
+
+---
+
+## 🎬 Bekijk dit eerst
+[YOUTUBE: Zoek een echte, bestaande YouTube video over "${onderwerp}". Geef de volledige URL.]
+
+**Video:** [Titel van de video](https://www.youtube.com/watch?v=XXXXX)
+*Duur: X minuten | Waarom deze video: [1 zin waarom deze video helpt]*
+
+---
+
+## 💡 Dit moet je weten
+[Maximaal 5 kernpunten. Elk punt max 15 woorden. Geen lange zinnen.]
+
+- **[Kernwoord 1]**: [Korte uitleg]
+- **[Kernwoord 2]**: [Korte uitleg]
+- **[Kernwoord 3]**: [Korte uitleg]
+- **[Kernwoord 4]**: [Korte uitleg]
+- **[Kernwoord 5]**: [Korte uitleg]
+
+---
+
+## 📸 In beeld
+[AFBEELDING: beschrijf een passende afbeelding die het onderwerp visualiseert]
+
+---
+
+## 📝 Even uitgelegd
+[Korte verdieping van max 80 woorden. Leg het belangrijkste concept uit in eenvoudige taal. Geen opsommingen, gewoon 4-5 zinnen die het verhaal vertellen.]
+
+---
+
+## 🎨 Maak het zelf
+**Creatieve opdracht:**
+[Een DOE-opdracht waarbij de leerling iets MAAKT, ONTWERPT of CREËERT. Geen kennisvragen!]
+
+*Voorbeelden van goede opdrachten:*
+- Maak een tekening/schema/poster van...
+- Ontwerp je eigen versie van...
+- Schrijf een kort verhaal/rap/gedicht over...
+- Bouw/knutsel een model van...
+- Neem een video op waarin je uitlegt...
+- Maak een meme of infographic over...
+
+**Jouw opdracht:** [Specifieke creatieve opdracht passend bij het onderwerp en niveau]
+
+*Wat heb je nodig:* [Materialen of tools]
+*Tijd:* [Geschatte tijd]
+
+---
+
+## 🔗 Meer ontdekken
+[YOUTUBE/PODCAST: Zoek nog een video of podcast voor wie meer wil weten]
+
+- [Extra video of podcast](URL) - [1 zin beschrijving]${bronnenSectie}`,
 
     custom: `# [Pakkende titel voor het hoofdstuk]
 
@@ -555,7 +615,7 @@ Pas de moeilijkheidsgraad, diepgang en voorbeelden aan op dit leerjaar.
     : '';
 
   // Genereer de template structuur
-  const templateStructuur = buildTemplateStructure(template || 'klassiek', customSecties, metBronnen);
+  const templateStructuur = buildTemplateStructure(template || 'klassiek', customSecties, metBronnen, onderwerp);
   const templateNaam = getTemplate(template || 'klassiek')?.naam || 'Klassiek';
 
   const prompt = `Je bent een ervaren onderwijsauteur die educatieve hoofdstukken schrijft. Schrijf een compleet hoofdstuk voor ${niveauInfo.doelgroep}, leerjaar ${leerjaar}.

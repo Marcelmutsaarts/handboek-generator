@@ -1,7 +1,7 @@
 export type Niveau = 'po_onder' | 'po_boven' | 'vmbo' | 'havo' | 'vwo' | 'mbo' | 'hbo' | 'uni';
 export type Lengte = 'kort' | 'medium' | 'lang';
 export type AfbeeldingType = 'geen' | 'stock' | 'ai';
-export type TemplateType = 'klassiek' | 'praktisch' | 'onderzoek' | 'toets' | 'custom';
+export type TemplateType = 'klassiek' | 'praktisch' | 'onderzoek' | 'toets' | 'visueel' | 'custom';
 
 // Template sectie definitie
 export interface TemplateSection {
@@ -76,6 +76,21 @@ export const TEMPLATES: Template[] = [
       { titel: 'Voorbeeldvragen', beschrijving: 'Typische vragen met uitwerking', verplicht: true },
       { titel: 'Oefenopgaven', beschrijving: 'Test jezelf', verplicht: true },
       { titel: 'Tips', beschrijving: 'Handige tips voor de toets', verplicht: false },
+    ],
+  },
+  {
+    id: 'visueel',
+    naam: 'Visueel & Compact',
+    beschrijving: 'Korte blokken, video\'s, creatieve opdrachten',
+    icon: '🎬',
+    secties: [
+      { titel: 'Prikkel', beschrijving: 'Haak met vraag of verrassend feit (max 3 zinnen)', verplicht: true },
+      { titel: 'Bekijk', beschrijving: 'YouTube video met korte toelichting', verplicht: true },
+      { titel: 'Kernpunten', beschrijving: 'Max 5 bullets met de essentie', verplicht: true },
+      { titel: 'In beeld', beschrijving: 'Afbeelding of infographic', verplicht: true },
+      { titel: 'Uitleg', beschrijving: 'Korte verdieping (max 100 woorden)', verplicht: false },
+      { titel: 'Maak het zelf', beschrijving: 'Creatieve doe-opdracht', verplicht: true },
+      { titel: 'Meer ontdekken', beschrijving: 'Extra video of podcast link', verplicht: false },
     ],
   },
   {

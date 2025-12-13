@@ -86,6 +86,7 @@ export function estimateMaxTokens(
       praktisch: 1500, // Succescriteria + structured steps + mastery checklist + examples
       onderzoek: 1500, // Hypothese + Operationalisatie + structured findings + conclusion + discussion
       toets: 1500,     // Verward-met + denkstappen + Antwoorden block + oefenopgaven
+      visueel: 800,    // Compact template: short blocks + YouTube links + creative assignment
       custom: 1000,    // Quality instruction block + check questions + examples
     };
     overhead += templateOverhead[formData.template] || 1000;
