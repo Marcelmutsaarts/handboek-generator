@@ -1,9 +1,62 @@
 import { NextRequest } from 'next/server';
-import { buildPrompt, buildPromptWithContext } from '@/lib/prompts';
+import { buildPrompt, buildPromptWithContext, YouTubeVideo } from '@/lib/prompts';
 import { FormData, TemplateSection } from '@/types';
 import { parseSSEStream, fallbackToJSON, extractErrorMessage, sanitizeHtmlToMarkdown } from '@/lib/sse';
 import { OPENROUTER_TEXT_TIMEOUT_MS, createTimeoutController, logTimeoutAbort } from '@/lib/apiLimits';
 import { estimateMaxTokens, explainTokenBudget } from '@/lib/tokenBudget';
+
+// Search YouTube for videos related to the topic (for visueel template)
+async function searchYouTubeVideos(query: string): Promise<YouTubeVideo[]> {
+  try {
+    const apiKey = process.env.YOUTUBE_API_KEY;
+    if (!apiKey) {
+      console.warn('[Generate] YouTube API key not configured, skipping video search');
+      return [];
+    }
+
+    const searchParams = new URLSearchParams({
+      part: 'snippet',
+      q: query,
+      type: 'video',
+      maxResults: '3',
+      videoEmbeddable: 'true',
+      relevanceLanguage: 'nl',
+      safeSearch: 'strict',
+      key: apiKey,
+    });
+
+    const response = await fetch(
+      `https://www.googleapis.com/youtube/v3/search?${searchParams}`,
+      { method: 'GET' }
+    );
+
+    if (!response.ok) {
+      console.error('[Generate] YouTube API error:', response.status);
+      return [];
+    }
+
+    const data = await response.json();
+
+    if (!data.items || data.items.length === 0) {
+      console.log('[Generate] No YouTube videos found for:', query);
+      return [];
+    }
+
+    const videos: YouTubeVideo[] = data.items.map((item: { id: { videoId: string }; snippet: { title: string; channelTitle: string; description: string } }) => ({
+      title: item.snippet.title,
+      videoId: item.id.videoId,
+      url: `https://www.youtube.com/watch?v=${item.id.videoId}`,
+      channelTitle: item.snippet.channelTitle,
+      description: item.snippet.description.slice(0, 200),
+    }));
+
+    console.log('[Generate] Found YouTube videos:', videos.length, 'for:', query);
+    return videos;
+  } catch (error) {
+    console.error('[Generate] YouTube search error:', error);
+    return [];
+  }
+}
 
 // CRITICAL: Vercel serverless timeout - must be literal number (Next.js 16+ requirement)
 // Without this, Vercel uses default 10s timeout causing truncation!
@@ -82,10 +135,16 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // Search for YouTube videos if template is 'visueel'
+    let youtubeVideos: YouTubeVideo[] = [];
+    if (formData.template === 'visueel') {
+      youtubeVideos = await searchYouTubeVideos(formData.onderwerp);
+    }
+
     // Use context-aware prompt if there are earlier chapters
     const prompt = eerdereHoofdstukken.length > 0
-      ? buildPromptWithContext(formData, eerdereHoofdstukken)
-      : buildPrompt(formData);
+      ? buildPromptWithContext(formData, eerdereHoofdstukken, youtubeVideos)
+      : buildPrompt(formData, youtubeVideos);
 
     // Estimate max_tokens dynamically based on request parameters
     const maxTokens = estimateMaxTokens(formData, eerdereHoofdstukken.length);

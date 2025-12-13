@@ -1,6 +1,15 @@
 import { FormData, TemplateType, TemplateSection, getTemplate, TEMPLATES, WOORDEN_PER_LENGTE } from '@/types';
 import { getLengthGuidance } from '@/lib/tokenBudget';
 
+// YouTube video data for injection into visueel template
+export interface YouTubeVideo {
+  title: string;
+  videoId: string;
+  url: string;
+  channelTitle: string;
+  description: string;
+}
+
 const NIVEAU_BESCHRIJVING: Record<string, { doelgroep: string; taalrichtlijnen: string }> = {
   po_onder: {
     doelgroep: 'basisschoolleerlingen onderbouw (groep 1-4, 4-8 jaar)',
@@ -143,7 +152,7 @@ const LEERJAAR_AANPASSINGEN: Record<string, Record<number, string>> = {
 };
 
 // Template structuur instructies genereren
-function buildTemplateStructure(template: TemplateType, customSecties?: TemplateSection[], metBronnen?: boolean, onderwerp?: string): string {
+function buildTemplateStructure(template: TemplateType, customSecties?: TemplateSection[], metBronnen?: boolean, onderwerp?: string, youtubeVideos?: YouTubeVideo[]): string {
   // Bij custom template, gebruik de custom secties met kwaliteitsinstructies
   if (template === 'custom' && customSecties && customSecties.length > 0) {
     const customInstructionBlock = `**KWALITEITSEISEN PER SECTIE:**
@@ -337,7 +346,21 @@ Korte antwoorden op de oefenopgaven:
 ## Tips
 Handige tips voor de toets: waar letten docenten op? Veelgemaakte fouten om te vermijden.${bronnenSectie}`,
 
-    visueel: `# [Korte, pakkende titel - max 6 woorden]
+    visueel: (() => {
+      // Build YouTube video sections based on available videos
+      const mainVideo = youtubeVideos && youtubeVideos[0]
+        ? `**Video:** [${youtubeVideos[0].title}](${youtubeVideos[0].url})
+
+*Kanaal: ${youtubeVideos[0].channelTitle} | Waarom deze video: [schrijf 1 zin waarom deze video helpt bij het begrijpen van ${onderwerp}]*`
+        : `**Video:** [Zoek zelf een relevante YouTube video over ${onderwerp}]
+
+*Let op: Geen video beschikbaar - zoek zelf een passende video*`;
+
+      const extraVideo = youtubeVideos && youtubeVideos[1]
+        ? `- [${youtubeVideos[1].title}](${youtubeVideos[1].url}) - ${youtubeVideos[1].channelTitle}`
+        : `- [Zoek zelf een extra video of podcast voor verdieping]`;
+
+      return `# [Korte, pakkende titel - max 6 woorden]
 
 ## Prikkel
 [Eén prikkelende vraag OF één verrassend feit over het onderwerp. Max 2 zinnen. Moet nieuwsgierigheid opwekken.]
@@ -346,13 +369,7 @@ Handige tips voor de toets: waar letten docenten op? Veelgemaakte fouten om te v
 
 ## 🎬 Bekijk dit eerst
 
-BELANGRIJK: Zoek een ECHTE YouTube video over "${onderwerp}".
-- ALLEEN youtube.com links (GEEN SchoolTV, Vimeo, of andere platforms)
-- De link MOET klikbaar zijn in markdown formaat: [Titel](https://www.youtube.com/watch?v=...)
-
-**Video:** [Titel van de video](https://www.youtube.com/watch?v=ECHTE_VIDEO_ID)
-
-*Duur: X minuten | Waarom deze video: [1 zin waarom deze video helpt]*
+${mainVideo}
 
 ---
 
@@ -398,11 +415,8 @@ BELANGRIJK: Zoek een ECHTE YouTube video over "${onderwerp}".
 
 ## 🔗 Meer ontdekken
 
-Zoek nog een YouTube video OF podcast voor verdieping.
-- ALLEEN klikbare markdown links: [Titel](URL)
-- Bij voorkeur YouTube, mag ook Spotify podcast
-
-- [Extra video of podcast](https://www.youtube.com/watch?v=... of https://open.spotify.com/...) - [1 zin beschrijving]${bronnenSectie}`,
+${extraVideo}${bronnenSectie}`;
+    })(),
 
     custom: `# [Pakkende titel voor het hoofdstuk]
 
@@ -419,7 +433,7 @@ Samenvatting en conclusie.${bronnenSectie}`,
   return templateStructures[template] || templateStructures.klassiek;
 }
 
-export function buildPrompt(data: FormData): string {
+export function buildPrompt(data: FormData, youtubeVideos?: YouTubeVideo[]): string {
   const { onderwerp, niveau, leerjaar, leerdoelen, lengte, woordenAantal, metAfbeeldingen, metBronnen, context, template, customSecties } = data;
   // Gebruik custom woordenaantal als opgegeven, anders fallback naar preset
   // Factor 1.5 omdat AI minder woorden genereert dan gevraagd (tokens vs woorden)
@@ -622,7 +636,7 @@ Pas de moeilijkheidsgraad, diepgang en voorbeelden aan op dit leerjaar.
     : '';
 
   // Genereer de template structuur
-  const templateStructuur = buildTemplateStructure(template || 'klassiek', customSecties, metBronnen, onderwerp);
+  const templateStructuur = buildTemplateStructure(template || 'klassiek', customSecties, metBronnen, onderwerp, youtubeVideos);
   const templateNaam = getTemplate(template || 'klassiek')?.naam || 'Klassiek';
 
   const prompt = `Je bent een ervaren onderwijsauteur die educatieve hoofdstukken schrijft. Schrijf een compleet hoofdstuk voor ${niveauInfo.doelgroep}, leerjaar ${leerjaar}.
@@ -708,9 +722,10 @@ interface EerderHoofdstuk {
 // Bouw prompt met context van eerdere hoofdstukken
 export function buildPromptWithContext(
   data: FormData,
-  eerdereHoofdstukken: EerderHoofdstuk[]
+  eerdereHoofdstukken: EerderHoofdstuk[],
+  youtubeVideos?: YouTubeVideo[]
 ): string {
-  const basePrompt = buildPrompt(data);
+  const basePrompt = buildPrompt(data, youtubeVideos);
 
   if (eerdereHoofdstukken.length === 0) {
     return basePrompt;
