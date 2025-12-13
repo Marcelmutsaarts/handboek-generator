@@ -61,11 +61,12 @@ INSTRUCTIES:
 6. Zorg dat de tekst past bij niveau ${niveau}, leerjaar ${leerjaar}
 7. Negeer andere aspecten die niet in de geselecteerde feedback staan
 
-BELANGRIJK:
-- Verander NIETS aan de structuur of afbeeldingmarkers
-- Lever de COMPLETE verbeterde tekst (niet alleen de aangepaste delen)
-- Gebruik exact dezelfde koppen en secties
-- Pas ALLEEN de specifieke feedback punten toe die zijn geselecteerd`;
+KRITISCH - OUTPUT FORMAT:
+- Begin DIRECT met de eerste kop (# Titel) van het hoofdstuk
+- GEEN inleidende tekst zoals "Hier is de verbeterde tekst" of "De aangepaste versie"
+- GEEN uitleg over wat je hebt veranderd
+- ALLEEN de verbeterde tekst zelf, niets anders
+- Lever de COMPLETE verbeterde tekst (niet alleen de aangepaste delen)`;
 
     const controller = createTimeoutController(OPENROUTER_QUALITY_TIMEOUT_MS);
 
@@ -94,10 +95,18 @@ BELANGRIJK:
     }
 
     const data = await response.json();
-    const improvedContent = data.choices[0]?.message?.content;
+    let improvedContent = data.choices[0]?.message?.content;
 
     if (!improvedContent) {
       return NextResponse.json({ error: 'No response from AI' }, { status: 500 });
+    }
+
+    // Clean up any introductory text the AI might have added
+    // Look for the first markdown heading and start from there
+    const headingMatch = improvedContent.match(/^([\s\S]*?)(#\s+.+)/m);
+    if (headingMatch && headingMatch[1].trim().length > 0 && headingMatch[1].trim().length < 200) {
+      // There's text before the first heading - likely an intro, remove it
+      improvedContent = improvedContent.substring(headingMatch.index! + headingMatch[1].length);
     }
 
     return NextResponse.json({ improved: improvedContent.trim() });
