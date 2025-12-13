@@ -405,6 +405,15 @@ export default function HandboekPreviewPage() {
           margin-bottom: 1rem;
         }
 
+        /* Links in content */
+        .chapters a {
+          color: #2563eb;
+          text-decoration: underline;
+        }
+        .chapters a:hover {
+          color: #1d4ed8;
+        }
+
         @media print {
           .print\\:hidden { display: none !important; }
           .cover-page, .cover-page-full { page-break-after: always; }

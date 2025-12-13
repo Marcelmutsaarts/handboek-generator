@@ -766,6 +766,8 @@ export const generatePublicHTML = (
     li { margin-bottom: 0.5rem; }
     strong { font-weight: 600; }
     em { font-style: italic; }
+    a { color: #2563eb; text-decoration: underline; }
+    a:hover { color: #1d4ed8; }
 
     /* Images */
     .image-figure {
@@ -1009,6 +1011,8 @@ export const exportHandboekAsHTML = (
     h3 { font-size: 1.125rem; margin-top: 1.5rem; }
     ul, ol { padding-left: 1.5rem; }
     li { margin-bottom: 0.5rem; }
+    a { color: #2563eb; text-decoration: underline; }
+    a:hover { color: #1d4ed8; }
     img { max-width: 100%; border-radius: 0.5rem; margin: 1rem 0; }
     figcaption { font-size: 0.75rem; color: #64748b; }
     nav { margin-bottom: 3rem; padding: 1.5rem; background: #f8fafc; border-radius: 0.5rem; }
