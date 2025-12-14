@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { ChapterImage } from '@/types';
 
 interface QualityScore {
   score: number;
@@ -13,7 +12,6 @@ interface QualityReport {
   helderheid: QualityScore;
   didactiek: QualityScore;
   niveauGeschikt: QualityScore;
-  afbeeldingen?: QualityScore; // Optional for backwards compatibility
   totaal: number;
   aanbeveling: 'excellent' | 'goed' | 'verbeteren';
   samenvatting: string;
@@ -24,20 +22,12 @@ interface SelectedFeedback {
   feedbackItem: string;
 }
 
-export type ImageFixAction = 'fix-caption' | 'regenerate-standard' | 'regenerate-pro';
-
 interface QualityFeedbackModalProps {
   report: QualityReport;
   isLoading: boolean;
   isImproving: boolean;
   onImprove: (selectedFeedback: SelectedFeedback[]) => Promise<void>;
   onClose: () => void;
-  // Image fix props
-  images?: ChapterImage[];
-  onFixImages?: (fixes: { imageIndex: number; action: ImageFixAction; feedback: string }[]) => Promise<void>;
-  isFixingImages?: boolean;
-  onderwerp?: string;
-  niveau?: string;
 }
 
 const CRITERIA_LABELS: Record<string, { naam: string; icon: string; beschrijving: string }> = {
@@ -61,21 +51,9 @@ const CRITERIA_LABELS: Record<string, { naam: string; icon: string; beschrijving
     icon: '🎯',
     beschrijving: 'Taal, diepgang en voorbeelden passend bij het niveau',
   },
-  afbeeldingen: {
-    naam: 'Afbeeldingen & Onderschriften',
-    icon: '🖼️',
-    beschrijving: 'Relevantie afbeeldingen, correctheid captions, spelfouten',
-  },
 };
 
-// Define which criteria to show (afbeeldingen only if present in report)
-const getActiveCriteria = (report: QualityReport): string[] => {
-  const baseCriteria = ['bias', 'helderheid', 'didactiek', 'niveauGeschikt'];
-  if (report.afbeeldingen) {
-    return [...baseCriteria, 'afbeeldingen'];
-  }
-  return baseCriteria;
-};
+const ACTIVE_CRITERIA = ['bias', 'helderheid', 'didactiek', 'niveauGeschikt'];
 
 export default function QualityFeedbackModal({
   report,
@@ -83,20 +61,11 @@ export default function QualityFeedbackModal({
   isImproving,
   onImprove,
   onClose,
-  images,
-  onFixImages,
-  isFixingImages,
-  onderwerp,
-  niveau,
 }: QualityFeedbackModalProps) {
-  const activeCriteria = getActiveCriteria(report);
-  const hasImageFeedback = report.afbeeldingen && report.afbeeldingen.feedback && report.afbeeldingen.feedback.length > 0;
-  const canFixImages = hasImageFeedback && images && images.length > 0 && onFixImages;
-
   // Track which feedback items are selected (all selected by default)
   const [selectedItems, setSelectedItems] = useState<Set<string>>(() => {
     const allItems = new Set<string>();
-    activeCriteria.forEach((criterium) => {
+    ACTIVE_CRITERIA.forEach((criterium) => {
       const score = report[criterium as keyof QualityReport] as QualityScore;
       if (score && score.feedback) {
         score.feedback.forEach((_, index) => {
@@ -105,17 +74,6 @@ export default function QualityFeedbackModal({
       }
     });
     return allItems;
-  });
-
-  // Track image fix actions (default: fix-caption)
-  const [imageFixActions, setImageFixActions] = useState<Record<number, ImageFixAction>>(() => {
-    const actions: Record<number, ImageFixAction> = {};
-    if (report.afbeeldingen?.feedback) {
-      report.afbeeldingen.feedback.forEach((_, index) => {
-        actions[index] = 'fix-caption';
-      });
-    }
-    return actions;
   });
 
   const toggleItem = (criterium: string, index: number) => {
@@ -138,60 +96,33 @@ export default function QualityFeedbackModal({
 
     const newSelected = new Set(selectedItems);
     if (allSelected) {
-      // Deselect all
       criteriumItems.forEach((key) => newSelected.delete(key));
     } else {
-      // Select all
       criteriumItems.forEach((key) => newSelected.add(key));
     }
     setSelectedItems(newSelected);
   };
 
   const handleApply = async () => {
-    // Separate text feedback from image feedback
-    const textFeedback: SelectedFeedback[] = [];
-    const imageFixes: { imageIndex: number; action: ImageFixAction; feedback: string }[] = [];
+    const selectedFeedback: SelectedFeedback[] = [];
 
-    activeCriteria.forEach((criterium) => {
+    ACTIVE_CRITERIA.forEach((criterium) => {
       const score = report[criterium as keyof QualityReport] as QualityScore;
       if (score && score.feedback) {
         score.feedback.forEach((item, index) => {
           if (selectedItems.has(`${criterium}-${index}`)) {
-            if (criterium === 'afbeeldingen' && canFixImages) {
-              // Try to extract image index from feedback text
-              // Feedback typically mentions "Afbeelding 1", "Afbeelding 2", etc.
-              const imageMatch = item.match(/Afbeelding\s+(\d+)/i);
-              const imageIndex = imageMatch ? parseInt(imageMatch[1]) - 1 : 0;
-              const validIndex = imageIndex >= 0 && imageIndex < (images?.length || 0) ? imageIndex : 0;
-
-              imageFixes.push({
-                imageIndex: validIndex,
-                action: imageFixActions[index] || 'fix-caption',
-                feedback: item,
-              });
-            } else {
-              textFeedback.push({
-                criterium: CRITERIA_LABELS[criterium].naam,
-                feedbackItem: item,
-              });
-            }
+            selectedFeedback.push({
+              criterium: CRITERIA_LABELS[criterium].naam,
+              feedbackItem: item,
+            });
           }
         });
       }
     });
 
-    // Apply text feedback
-    if (textFeedback.length > 0) {
-      await onImprove(textFeedback);
-    }
-
-    // Apply image fixes
-    if (imageFixes.length > 0 && onFixImages) {
-      await onFixImages(imageFixes);
-    }
-
-    // Close if nothing was selected
-    if (textFeedback.length === 0 && imageFixes.length === 0) {
+    if (selectedFeedback.length > 0) {
+      await onImprove(selectedFeedback);
+    } else {
       onClose();
     }
   };
@@ -215,7 +146,7 @@ export default function QualityFeedbackModal({
   };
 
   const selectedCount = selectedItems.size;
-  const totalCount = activeCriteria.reduce((total, criterium) => {
+  const totalCount = ACTIVE_CRITERIA.reduce((total, criterium) => {
     const score = report[criterium as keyof QualityReport] as QualityScore;
     return total + (score?.feedback?.length || 0);
   }, 0);
@@ -263,14 +194,13 @@ export default function QualityFeedbackModal({
             </div>
           ) : (
             <>
-              {activeCriteria.map((criterium) => {
+              {ACTIVE_CRITERIA.map((criterium) => {
                 const score = report[criterium as keyof QualityReport] as QualityScore;
                 if (!score) return null;
 
                 const info = CRITERIA_LABELS[criterium];
                 const criteriumItems = score.feedback.map((_, i) => `${criterium}-${i}`);
                 const allSelected = criteriumItems.every((key) => selectedItems.has(key));
-                const someSelected = criteriumItems.some((key) => selectedItems.has(key));
 
                 return (
                   <div key={criterium} className="border border-gray-200 rounded-lg overflow-hidden">
@@ -304,72 +234,26 @@ export default function QualityFeedbackModal({
                         {score.feedback.map((item, index) => {
                           const key = `${criterium}-${index}`;
                           const isSelected = selectedItems.has(key);
-                          const isImageFeedback = criterium === 'afbeeldingen' && canFixImages;
 
                           return (
-                            <div
+                            <label
                               key={index}
-                              className={`p-3 rounded-lg border-2 transition-all ${
+                              className={`flex items-start gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${
                                 isSelected
                                   ? 'border-primary bg-blue-50'
                                   : 'border-gray-200 bg-white hover:border-gray-300'
                               }`}
                             >
-                              <label className="flex items-start gap-3 cursor-pointer">
-                                <input
-                                  type="checkbox"
-                                  checked={isSelected}
-                                  onChange={() => toggleItem(criterium, index)}
-                                  className="mt-0.5 w-5 h-5 text-primary border-gray-300 rounded focus:ring-primary"
-                                />
-                                <span className={`flex-1 text-sm ${isSelected ? 'text-gray-900 font-medium' : 'text-gray-700'}`}>
-                                  {item}
-                                </span>
-                              </label>
-
-                              {/* Image fix options - only show for afbeeldingen feedback when selected */}
-                              {isImageFeedback && isSelected && (
-                                <div className="mt-3 ml-8 p-3 bg-white rounded-lg border border-gray-200 space-y-2">
-                                  <p className="text-xs font-medium text-gray-600 mb-2">Kies hoe je dit wilt oplossen:</p>
-
-                                  <label className="flex items-center gap-2 cursor-pointer">
-                                    <input
-                                      type="radio"
-                                      name={`image-fix-${index}`}
-                                      checked={imageFixActions[index] === 'fix-caption'}
-                                      onChange={() => setImageFixActions(prev => ({ ...prev, [index]: 'fix-caption' }))}
-                                      className="w-4 h-4 text-primary border-gray-300 focus:ring-primary"
-                                    />
-                                    <span className="text-sm text-gray-700">Corrigeer caption</span>
-                                    <span className="text-xs text-gray-500">(alleen tekst aanpassen)</span>
-                                  </label>
-
-                                  <label className="flex items-center gap-2 cursor-pointer">
-                                    <input
-                                      type="radio"
-                                      name={`image-fix-${index}`}
-                                      checked={imageFixActions[index] === 'regenerate-standard'}
-                                      onChange={() => setImageFixActions(prev => ({ ...prev, [index]: 'regenerate-standard' }))}
-                                      className="w-4 h-4 text-primary border-gray-300 focus:ring-primary"
-                                    />
-                                    <span className="text-sm text-gray-700">Genereer afbeelding opnieuw</span>
-                                    <span className="text-xs text-gray-500">(standaard kwaliteit)</span>
-                                  </label>
-
-                                  <label className="flex items-center gap-2 cursor-pointer">
-                                    <input
-                                      type="radio"
-                                      name={`image-fix-${index}`}
-                                      checked={imageFixActions[index] === 'regenerate-pro'}
-                                      onChange={() => setImageFixActions(prev => ({ ...prev, [index]: 'regenerate-pro' }))}
-                                      className="w-4 h-4 text-primary border-gray-300 focus:ring-primary"
-                                    />
-                                    <span className="text-sm text-gray-700">Genereer opnieuw (Pro)</span>
-                                    <span className="text-xs text-amber-600 font-medium">(betere kwaliteit, duurder)</span>
-                                  </label>
-                                </div>
-                              )}
-                            </div>
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={() => toggleItem(criterium, index)}
+                                className="mt-0.5 w-5 h-5 text-primary border-gray-300 rounded focus:ring-primary"
+                              />
+                              <span className={`flex-1 text-sm ${isSelected ? 'text-gray-900 font-medium' : 'text-gray-700'}`}>
+                                {item}
+                              </span>
+                            </label>
                           );
                         })}
                       </div>
@@ -390,20 +274,20 @@ export default function QualityFeedbackModal({
             <div className="flex items-center gap-3">
               <button
                 onClick={onClose}
-                disabled={isImproving || isFixingImages}
+                disabled={isImproving}
                 className="px-4 py-2 text-sm bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
               >
                 Annuleren
               </button>
               <button
                 onClick={handleApply}
-                disabled={isImproving || isFixingImages || selectedCount === 0}
+                disabled={isImproving || selectedCount === 0}
                 className="px-6 py-2 text-sm bg-primary text-white rounded-lg hover:bg-primary-hover transition-colors disabled:opacity-50 flex items-center gap-2"
               >
-                {isImproving || isFixingImages ? (
+                {isImproving ? (
                   <>
                     <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
-                    {isFixingImages ? 'Afbeeldingen corrigeren...' : 'Tekst verbeteren...'}
+                    Tekst verbeteren...
                   </>
                 ) : (
                   <>

@@ -5,7 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import Header from '@/components/Header';
 import ChapterDisplay from '@/components/ChapterDisplay';
-import QualityFeedbackModal, { ImageFixAction } from '@/components/QualityFeedbackModal';
+import QualityFeedbackModal from '@/components/QualityFeedbackModal';
 import { QualityReport } from '@/components/QualityCheckModal';
 import SourceVerificationModal, { Source } from '@/components/SourceVerificationModal';
 import { useAuth } from '@/hooks/useAuth';
@@ -68,7 +68,6 @@ export default function NieuwHoofdstukPage() {
   const [qualityReport, setQualityReport] = useState<QualityReport | null>(null);
   const [isCheckingQuality, setIsCheckingQuality] = useState(false);
   const [isImproving, setIsImproving] = useState(false);
-  const [isFixingImages, setIsFixingImages] = useState(false);
 
   // Source verification state
   const [showSourceModal, setShowSourceModal] = useState(false);
@@ -552,88 +551,7 @@ export default function NieuwHoofdstukPage() {
     setQualityReport(null);
 
     try {
-      // Prepare images for multimodal quality check
-      let imageMetadata: { url: string; caption: string | null; alt: string | null }[] | undefined;
-
-      if (images.length > 0) {
-        // Separate base64 images from HTTPS URLs
-        const base64Images = images
-          .map((img, index) => ({ img, index }))
-          .filter(({ img }) => img.url && img.url.startsWith('data:'));
-        const httpsImages = images.filter(img => img.url && !img.url.startsWith('data:') && img.url.length > 0);
-
-        // If we have base64 images, try to upload them first to get HTTPS URLs
-        if (base64Images.length > 0) {
-          try {
-            const sessionId = `qc-${Date.now()}-${Math.random().toString(36).substring(7)}`;
-            const uploadResponse = await fetch('/api/upload-temp-images', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                images: base64Images.map(({ img, index }) => ({ url: img.url, index })),
-                sessionId,
-              }),
-            });
-
-            if (uploadResponse.ok) {
-              const uploadResult = await uploadResponse.json();
-              // Build image metadata with uploaded URLs
-              const uploadedUrlMap = new Map<number, string>(
-                uploadResult.uploadedImages.map((u: { originalIndex: number; publicUrl: string }) => [u.originalIndex, u.publicUrl])
-              );
-
-              imageMetadata = images.map((img, index) => {
-                // If this was a base64 image and we have an uploaded URL, use it
-                const uploadedUrl = uploadedUrlMap.get(index);
-                if (uploadedUrl) {
-                  return { url: uploadedUrl, caption: img.caption || null, alt: img.alt || null };
-                }
-                // If it was already an HTTPS URL, use it directly
-                if (img.url && !img.url.startsWith('data:') && img.url.length > 0) {
-                  return { url: img.url, caption: img.caption || null, alt: img.alt || null };
-                }
-                // Fallback: empty URL (text-only analysis for this image)
-                return { url: '', caption: img.caption || null, alt: img.alt || null };
-              });
-
-              console.log(`Uploaded ${uploadResult.uploadedCount}/${base64Images.length} images for quality check`);
-            } else {
-              console.warn('Image upload failed, falling back to text-only analysis');
-              // Fallback: use captions/alt only
-              imageMetadata = images.map(img => ({
-                url: '',
-                caption: img.caption || null,
-                alt: img.alt || null,
-              }));
-            }
-          } catch (uploadError) {
-            console.warn('Image upload error, falling back to text-only analysis:', uploadError);
-            // Fallback: use captions/alt only
-            imageMetadata = images.map(img => ({
-              url: '',
-              caption: img.caption || null,
-              alt: img.alt || null,
-            }));
-          }
-        } else if (httpsImages.length > 0) {
-          // Only HTTPS images, no upload needed
-          imageMetadata = images.map(img => ({
-            url: img.url && !img.url.startsWith('data:') ? img.url : '',
-            caption: img.caption || null,
-            alt: img.alt || null,
-          }));
-        } else {
-          // No valid images, just captions/alt
-          imageMetadata = images.map(img => ({
-            url: '',
-            caption: img.caption || null,
-            alt: img.alt || null,
-          }));
-        }
-      }
-
+      // Text-only quality check (no image analysis - too expensive)
       const response = await fetch('/api/quality-check', {
         method: 'POST',
         headers: {
@@ -645,7 +563,6 @@ export default function NieuwHoofdstukPage() {
           niveau: handboek.niveau,
           leerjaar: handboek.leerjaar,
           context: handboek.context,
-          images: imageMetadata,
         }),
       });
 
@@ -701,72 +618,6 @@ export default function NieuwHoofdstukPage() {
       alert(`Fout bij verbeteren: ${errorMessage}`);
     } finally {
       setIsImproving(false);
-    }
-  };
-
-  const handleFixImages = async (fixes: { imageIndex: number; action: ImageFixAction; feedback: string }[]) => {
-    if (!handboek || fixes.length === 0 || images.length === 0) return;
-
-    setIsFixingImages(true);
-
-    try {
-      // Process each fix sequentially to avoid race conditions
-      const updatedImages = [...images];
-
-      for (const fix of fixes) {
-        const image = updatedImages[fix.imageIndex];
-        if (!image) continue;
-
-        const response = await fetch('/api/fix-image', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...getApiKeyHeader(),
-          },
-          body: JSON.stringify({
-            action: fix.action,
-            imageUrl: image.url,
-            currentCaption: image.caption || null,
-            currentAlt: image.alt || null,
-            onderwerp,
-            feedback: fix.feedback,
-            niveau: handboek.niveau,
-          }),
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          console.error('Fix image error:', errorData);
-          continue; // Continue with next fix
-        }
-
-        const result = await response.json();
-
-        if (result.action === 'caption-fixed') {
-          updatedImages[fix.imageIndex] = {
-            ...updatedImages[fix.imageIndex],
-            caption: result.newCaption,
-          };
-        } else if (result.action === 'image-regenerated') {
-          updatedImages[fix.imageIndex] = {
-            ...updatedImages[fix.imageIndex],
-            url: result.newImageUrl,
-            caption: result.newCaption,
-            alt: result.newAlt,
-            isAiGenerated: true,
-          };
-        }
-      }
-
-      setImages(updatedImages);
-      setShowQualityModal(false);
-      setQualityReport(null);
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Afbeeldingen corrigeren mislukt';
-      setError(errorMessage);
-      alert(`Fout bij corrigeren afbeeldingen: ${errorMessage}`);
-    } finally {
-      setIsFixingImages(false);
     }
   };
 
@@ -1342,11 +1193,6 @@ export default function NieuwHoofdstukPage() {
           isImproving={isImproving}
           onClose={() => setShowQualityModal(false)}
           onImprove={handleImprove}
-          images={images}
-          onFixImages={handleFixImages}
-          isFixingImages={isFixingImages}
-          onderwerp={onderwerp}
-          niveau={handboek?.niveau}
         />
       )}
 

@@ -102,7 +102,7 @@ export default function HoofdstukDetailPage() {
     }
   };
 
-  const handleSave = async (newContent: string) => {
+  const handleSave = async (newContent: string, updatedImages?: Afbeelding[]) => {
     if (!hoofdstuk) return;
 
     setIsSaving(true);
@@ -114,6 +114,7 @@ export default function HoofdstukDetailPage() {
     const titleMatch = newContent.match(/^#\s+(.+)$/m);
     const newTitle = titleMatch ? titleMatch[1] : hoofdstuk.titel;
 
+    // Update hoofdstuk content
     const { error: updateError } = await supabase
       .from('hoofdstukken')
       .update({
@@ -126,12 +127,58 @@ export default function HoofdstukDetailPage() {
     if (updateError) {
       console.error('Error updating hoofdstuk:', updateError);
       setError('Kon wijzigingen niet opslaan');
-    } else {
-      // Update local state
-      setHoofdstuk({ ...hoofdstuk, content: newContent, titel: newTitle });
-      setIsEditing(false);
+      setIsSaving(false);
+      return;
     }
 
+    // Handle image updates if provided
+    if (updatedImages) {
+      // Find deleted images (images in afbeeldingen but not in updatedImages)
+      const updatedIds = new Set(updatedImages.map(img => img.id));
+      const deletedImages = afbeeldingen.filter(img => !updatedIds.has(img.id));
+
+      // Delete removed images
+      for (const img of deletedImages) {
+        const { error: deleteError } = await supabase
+          .from('afbeeldingen')
+          .delete()
+          .eq('id', img.id);
+
+        if (deleteError) {
+          console.error('Error deleting image:', deleteError);
+        }
+      }
+
+      // Update modified images
+      for (const img of updatedImages) {
+        const original = afbeeldingen.find(a => a.id === img.id);
+        if (original && (
+          img.caption !== original.caption ||
+          img.alt !== original.alt ||
+          img.url !== original.url
+        )) {
+          const { error: imgUpdateError } = await supabase
+            .from('afbeeldingen')
+            .update({
+              caption: img.caption,
+              alt: img.alt,
+              url: img.url,
+            })
+            .eq('id', img.id);
+
+          if (imgUpdateError) {
+            console.error('Error updating image:', imgUpdateError);
+          }
+        }
+      }
+
+      // Update local state with new images
+      setAfbeeldingen(updatedImages);
+    }
+
+    // Update local state
+    setHoofdstuk({ ...hoofdstuk, content: newContent, titel: newTitle });
+    setIsEditing(false);
     setIsSaving(false);
   };
 
@@ -241,6 +288,9 @@ export default function HoofdstukDetailPage() {
             onSave={handleSave}
             onCancel={() => setIsEditing(false)}
             isSaving={isSaving}
+            images={afbeeldingen}
+            onderwerp={hoofdstuk.onderwerp}
+            niveau={handboek.niveau}
           />
         ) : (
           <ChapterDisplay
