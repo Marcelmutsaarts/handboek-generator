@@ -12,6 +12,7 @@ interface QualityReport {
   helderheid: QualityScore;
   didactiek: QualityScore;
   niveauGeschikt: QualityScore;
+  afbeeldingen?: QualityScore; // Optional for backwards compatibility
   totaal: number;
   aanbeveling: 'excellent' | 'goed' | 'verbeteren';
   samenvatting: string;
@@ -51,6 +52,20 @@ const CRITERIA_LABELS: Record<string, { naam: string; icon: string; beschrijving
     icon: '🎯',
     beschrijving: 'Taal, diepgang en voorbeelden passend bij het niveau',
   },
+  afbeeldingen: {
+    naam: 'Afbeeldingen & Onderschriften',
+    icon: '🖼️',
+    beschrijving: 'Relevantie afbeeldingen, correctheid captions, spelfouten',
+  },
+};
+
+// Define which criteria to show (afbeeldingen only if present in report)
+const getActiveCriteria = (report: QualityReport): string[] => {
+  const baseCriteria = ['bias', 'helderheid', 'didactiek', 'niveauGeschikt'];
+  if (report.afbeeldingen) {
+    return [...baseCriteria, 'afbeeldingen'];
+  }
+  return baseCriteria;
 };
 
 export default function QualityFeedbackModal({
@@ -60,10 +75,12 @@ export default function QualityFeedbackModal({
   onImprove,
   onClose,
 }: QualityFeedbackModalProps) {
+  const activeCriteria = getActiveCriteria(report);
+
   // Track which feedback items are selected (all selected by default)
   const [selectedItems, setSelectedItems] = useState<Set<string>>(() => {
     const allItems = new Set<string>();
-    ['bias', 'helderheid', 'didactiek', 'niveauGeschikt'].forEach((criterium) => {
+    activeCriteria.forEach((criterium) => {
       const score = report[criterium as keyof QualityReport] as QualityScore;
       if (score && score.feedback) {
         score.feedback.forEach((_, index) => {
@@ -106,7 +123,7 @@ export default function QualityFeedbackModal({
   const handleApply = async () => {
     const selectedFeedback: SelectedFeedback[] = [];
 
-    ['bias', 'helderheid', 'didactiek', 'niveauGeschikt'].forEach((criterium) => {
+    activeCriteria.forEach((criterium) => {
       const score = report[criterium as keyof QualityReport] as QualityScore;
       if (score && score.feedback) {
         score.feedback.forEach((item, index) => {
@@ -142,7 +159,7 @@ export default function QualityFeedbackModal({
   };
 
   const selectedCount = selectedItems.size;
-  const totalCount = ['bias', 'helderheid', 'didactiek', 'niveauGeschikt'].reduce((total, criterium) => {
+  const totalCount = activeCriteria.reduce((total, criterium) => {
     const score = report[criterium as keyof QualityReport] as QualityScore;
     return total + (score?.feedback?.length || 0);
   }, 0);
@@ -190,7 +207,7 @@ export default function QualityFeedbackModal({
             </div>
           ) : (
             <>
-              {['bias', 'helderheid', 'didactiek', 'niveauGeschikt'].map((criterium) => {
+              {activeCriteria.map((criterium) => {
                 const score = report[criterium as keyof QualityReport] as QualityScore;
                 if (!score) return null;
 

@@ -551,6 +551,15 @@ export default function NieuwHoofdstukPage() {
     setQualityReport(null);
 
     try {
+      // Prepare images for multimodal quality check
+      const imageData = images.length > 0
+        ? images.map(img => ({
+            url: img.url,
+            caption: img.caption || null,
+            alt: img.alt || null,
+          }))
+        : undefined;
+
       const response = await fetch('/api/quality-check', {
         method: 'POST',
         headers: {
@@ -562,6 +571,7 @@ export default function NieuwHoofdstukPage() {
           niveau: handboek.niveau,
           leerjaar: handboek.leerjaar,
           context: handboek.context,
+          images: imageData, // NEW: include images for multimodal analysis
         }),
       });
 
