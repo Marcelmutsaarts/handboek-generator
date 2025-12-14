@@ -19,11 +19,12 @@ interface ImageResponse {
 
 export async function POST(request: NextRequest) {
   try {
-    const { prompt, onderwerp, isInfographic, chapterContent }: {
+    const { prompt, onderwerp, isInfographic, chapterContent, useProModel }: {
       prompt: string;
       onderwerp: string;
       isInfographic?: boolean;
       chapterContent?: string;
+      useProModel?: boolean; // NEW: optie om pro model te gebruiken voor betere kwaliteit
     } = await request.json();
 
     // Get API key from header
@@ -94,7 +95,8 @@ INFOGRAPHIC VEREISTEN:
 
 BELANGRIJK: Dit moet eruitzien als een premium educatieve poster die je in een klaslokaal zou ophangen. Maak het informatiedicht maar overzichtelijk en visueel aantrekkelijk.`;
     } else {
-      selectedModel = IMAGE_MODEL;
+      // Use pro model if explicitly requested for better quality
+      selectedModel = useProModel ? INFOGRAPHIC_MODEL : IMAGE_MODEL;
       imagePrompt = `Genereer een professionele, educatieve foto of illustratie voor een lesboek hoofdstuk over "${onderwerp}".
 
 De afbeelding moet het volgende tonen: ${prompt}
@@ -139,8 +141,25 @@ Stijlvereisten:
 
     if (!response.ok) {
       const error = await response.text();
-      console.error('OpenRouter image generation error:', error);
-      return NextResponse.json({ error: 'Image generation failed' }, { status: 500 });
+      console.error('OpenRouter image generation error:', {
+        status: response.status,
+        statusText: response.statusText,
+        error,
+        model: selectedModel,
+      });
+
+      // Return more specific error messages
+      if (response.status === 429) {
+        return NextResponse.json({ error: 'Rate limit bereikt. Wacht even en probeer opnieuw.' }, { status: 429 });
+      }
+      if (response.status === 401) {
+        return NextResponse.json({ error: 'Ongeldige API key. Controleer je OpenRouter key.' }, { status: 401 });
+      }
+      if (response.status === 400) {
+        return NextResponse.json({ error: `Model fout: ${error}` }, { status: 400 });
+      }
+
+      return NextResponse.json({ error: `Afbeelding generatie mislukt (${response.status})` }, { status: 500 });
     }
 
     const data = await response.json();

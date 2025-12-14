@@ -72,6 +72,8 @@ export async function POST(request: NextRequest) {
 
     const niveauLabel = NIVEAU_LABELS[niveau] || niveau;
     const hasImages = images && images.length > 0;
+    // Check if we have actual image URLs (not empty/base64) for multimodal analysis
+    const hasImageUrls = hasImages && images.some(img => img.url && !img.url.startsWith('data:') && img.url.length > 0);
 
     const contextNote = context
       ? `\n\nLET OP: Dit hoofdstuk is gepersonaliseerd met context "${context}". Voorbeelden en vergelijkingen gerelateerd aan "${context}" zijn GEWENST en geen probleem voor bias of didactiek.`
@@ -119,20 +121,19 @@ JSON (geen extra tekst):
   "samenvatting": "1-2 zinnen algemene beoordeling"
 }`;
 
-    // Build message content - multimodal if images present
+    // Build message content - multimodal only if we have actual image URLs
     let messageContent: string | { type: string; text?: string; image_url?: { url: string } }[];
     let model: string;
 
-    if (hasImages) {
+    if (hasImageUrls) {
       // Multimodal message with images
       const contentParts: { type: string; text?: string; image_url?: { url: string } }[] = [
         { type: 'text', text: promptText }
       ];
 
-      // Add each image to the message
-      for (const img of images) {
-        if (img.url && !img.url.startsWith('data:')) {
-          // Only add valid URLs (not base64 for now to avoid size issues)
+      // Add each image to the message (only valid HTTPS URLs)
+      for (const img of images!) {
+        if (img.url && !img.url.startsWith('data:') && img.url.length > 0) {
           contentParts.push({
             type: 'image_url',
             image_url: { url: img.url }
@@ -142,10 +143,12 @@ JSON (geen extra tekst):
 
       messageContent = contentParts;
       model = MULTIMODAL_MODEL;
+      console.log('Using multimodal analysis with', contentParts.length - 1, 'images');
     } else {
-      // Text-only message
+      // Text-only message (also used when images have no URLs - just analyze captions)
       messageContent = promptText;
       model = TEXT_ONLY_MODEL;
+      console.log('Using text-only analysis', hasImages ? '(images have no valid URLs, analyzing captions only)' : '');
     }
 
     const controller = createTimeoutController(OPENROUTER_QUALITY_TIMEOUT_MS);
