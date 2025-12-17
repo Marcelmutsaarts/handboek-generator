@@ -85,6 +85,7 @@ interface RequestBody {
   niveau?: string;
   leerjaar?: number;
   leerdoelen?: string;
+  schrijfstijl?: string;
   lengte?: string;
   woordenAantal?: number;
   metAfbeeldingen?: boolean;
@@ -115,6 +116,7 @@ export async function POST(request: NextRequest) {
       niveau: body.niveau as FormData['niveau'] || 'havo',
       leerjaar: body.leerjaar || 1,
       leerdoelen: body.leerdoelen || '',
+      schrijfstijl: body.schrijfstijl || '',
       lengte: body.lengte as FormData['lengte'] || 'medium',
       woordenAantal: body.woordenAantal || 1500,
       metAfbeeldingen: body.metAfbeeldingen ?? true,

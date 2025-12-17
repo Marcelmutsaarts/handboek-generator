@@ -44,6 +44,7 @@ export default function NieuwHoofdstukPage() {
   const [selectedPlan, setSelectedPlan] = useState<HoofdstukPlan | null>(null);
   const [onderwerp, setOnderwerp] = useState('');
   const [leerdoelen, setLeerdoelen] = useState('');
+  const [schrijfstijl, setSchrijfstijl] = useState('');
   const [lengte, setLengte] = useState<Lengte>('medium');
   const [woordenAantal, setWoordenAantal] = useState(WOORDEN_PER_LENGTE.medium);
   const [afbeeldingType, setAfbeeldingType] = useState<AfbeeldingType>('stock');
@@ -365,6 +366,7 @@ export default function NieuwHoofdstukPage() {
         niveau: handboek.niveau,
         leerjaar: handboek.leerjaar,
         leerdoelen: leerdoelen.trim(),
+        schrijfstijl: schrijfstijl.trim(),
         lengte,
         woordenAantal,
         metAfbeeldingen: afbeeldingType !== 'geen',
@@ -916,6 +918,24 @@ export default function NieuwHoofdstukPage() {
                   rows={3}
                   className="w-full px-4 py-3 rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all resize-none"
                 />
+              </div>
+
+              {/* Schrijfstijl / Tone of Voice */}
+              <div>
+                <label htmlFor="schrijfstijl" className="block text-sm font-medium mb-2">
+                  Schrijfstijl (optioneel)
+                </label>
+                <textarea
+                  id="schrijfstijl"
+                  value={schrijfstijl}
+                  onChange={(e) => setSchrijfstijl(e.target.value)}
+                  placeholder="Bijv: Houd de tekst luchtig met grappige voorbeelden, Leg elk begrip uit met een simpele metafoor, Gebruik veel vraagzinnen om de lezer actief te houden..."
+                  rows={2}
+                  className="w-full px-4 py-3 rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all resize-none"
+                />
+                <p className="text-xs text-secondary mt-1.5">
+                  Speciale instructies voor de toon en stijl van dit hoofdstuk. Bijvoorbeeld: &quot;luchtige toon met humor&quot; of &quot;elk begrip met een metafoor uitleggen&quot;.
+                </p>
               </div>
 
               {/* Lengte */}

@@ -131,6 +131,7 @@ export interface FormData {
   niveau: Niveau;
   leerjaar: number;
   leerdoelen: string;
+  schrijfstijl?: string; // optioneel: tone of voice instructies voor dit hoofdstuk
   lengte: Lengte;
   woordenAantal: number; // exact aantal woorden (kan afwijken van lengte preset)
   metAfbeeldingen: boolean;

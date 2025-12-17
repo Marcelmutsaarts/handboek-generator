@@ -434,7 +434,7 @@ Samenvatting en conclusie.${bronnenSectie}`,
 }
 
 export function buildPrompt(data: FormData, youtubeVideos?: YouTubeVideo[]): string {
-  const { onderwerp, niveau, leerjaar, leerdoelen, lengte, woordenAantal, metAfbeeldingen, metBronnen, context, template, customSecties } = data;
+  const { onderwerp, niveau, leerjaar, leerdoelen, schrijfstijl, lengte, woordenAantal, metAfbeeldingen, metBronnen, context, template, customSecties } = data;
   // Gebruik custom woordenaantal als opgegeven, anders fallback naar preset
   // Factor 1.5 omdat AI minder woorden genereert dan gevraagd (tokens vs woorden)
   const woordenaantal = Math.round((woordenAantal || WOORDEN_PER_LENGTE[lengte]) * 1.5);
@@ -450,6 +450,16 @@ ${leerdoelen
   .filter((l) => l.trim())
   .map((l) => `- ${l.trim()}`)
   .join('\n')}
+`
+    : '';
+
+  const schrijfstijlSection = schrijfstijl?.trim()
+    ? `
+## SCHRIJFSTIJL / TONE OF VOICE
+De docent vraagt specifiek om de volgende stijl voor dit hoofdstuk:
+"${schrijfstijl.trim()}"
+
+Pas deze instructie toe door het hele hoofdstuk heen. Dit heeft prioriteit boven standaard richtlijnen.
 `
     : '';
 
@@ -653,7 +663,7 @@ Dit is de BELANGRIJKSTE regel - volg deze STRIKT:
 
 ## ONDERWERP
 ${onderwerp}
-${leerjaarSection}${leerdoelenSection}${contextSection}
+${leerjaarSection}${leerdoelenSection}${schrijfstijlSection}${contextSection}
 ## TAALRICHTLIJNEN VOOR DIT NIVEAU
 ${niveauInfo.taalrichtlijnen}
 
