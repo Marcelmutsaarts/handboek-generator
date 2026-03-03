@@ -64,7 +64,7 @@ export const maxDuration = 120;
 
 // :online suffix enables OpenRouter web search (via Exa) for real sources
 // To disable: remove ':online' suffix
-const MODEL = 'google/google/gemini-3.1-flash-lite-preview';
+const MODEL = 'google/gemini-3.1-flash-lite-preview';
 
 // Get API key from request header (user's key) - no fallback to env
 function getApiKey(request: NextRequest): string | null {
